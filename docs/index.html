@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Steve's App - Remote Terminal Access for AI Coding Assistants</title>
   <meta name="description" content="Monitor Claude Code, Codex, and OpenCode from your phone. No VPN, no accounts, just P2P browser access. Free and open source.">
   <meta property="og:title" content="Steve's App - Remote Terminal for AI Coding">
@@ -10,6 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://steves.app">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖥️</text></svg>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -99,6 +100,8 @@
       font-weight: 600;
       text-decoration: none;
       transition: all 0.2s;
+      cursor: pointer;
+      border: none;
     }
     .btn-primary {
       background: #e94560;
@@ -114,6 +117,169 @@
     }
     .btn-secondary:hover {
       background: rgba(255,255,255,0.05);
+    }
+    .btn-github {
+      background: #333;
+      color: white;
+    }
+    .btn-github:hover {
+      background: #444;
+    }
+
+    /* Connect section */
+    .connect-section {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .connect-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 30px;
+    }
+    .connect-box h3 {
+      margin-bottom: 8px;
+      font-size: 1.3rem;
+    }
+    .connect-box .subtitle {
+      color: #a0a0c0;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+    .connect-box input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #eaeaea;
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+    .connect-box input::placeholder {
+      color: #666;
+    }
+    .connect-box button {
+      width: 100%;
+      padding: 14px;
+      background: #4ecca3;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .connect-box button:hover {
+      background: #3db892;
+    }
+    .connect-box button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    .connect-status {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #a0a0c0;
+    }
+    .connect-status.error {
+      color: #e94560;
+    }
+    .connect-status.success {
+      color: #4ecca3;
+    }
+
+    /* Terminal screen (hidden until connected) */
+    #terminal-screen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      z-index: 1000;
+      flex-direction: column;
+    }
+    #terminal-screen.active {
+      display: flex;
+    }
+    #terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: #16213e;
+      border-bottom: 1px solid #2a2a4e;
+    }
+    #terminal-header .session-info {
+      color: #a0a0c0;
+      font-size: 0.9rem;
+    }
+    #terminal-header button {
+      padding: 8px 16px;
+      background: #e94560;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    #terminal {
+      flex: 1;
+      background: #000;
+      min-height: 0;
+    }
+    #keyboard-toolbar {
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      background: #16213e;
+      border-top: 1px solid #2a2a4e;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #keyboard-toolbar button {
+      padding: 10px 14px;
+      background: #2a2a4e;
+      border: 1px solid #3a3a5e;
+      border-radius: 6px;
+      color: #eaeaea;
+      font-size: 14px;
+      cursor: pointer;
+      min-width: 44px;
+      touch-action: manipulation;
+    }
+    #keyboard-toolbar button:active {
+      background: #e94560;
+    }
+    .arrow-btn { font-size: 18px !important; }
+    #sessions-panel {
+      background: #16213e;
+      border-bottom: 1px solid #2a2a4e;
+      padding: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #sessions-panel.hidden { display: none; }
+    .session-item {
+      padding: 10px;
+      margin-bottom: 4px;
+      background: #2a2a4e;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .session-item:active, .session-item.active {
+      background: #e94560;
+    }
+    .session-item .type {
+      font-size: 11px;
+      color: #a0a0a0;
+      text-transform: uppercase;
     }
 
     .features {
@@ -302,8 +468,8 @@
         <span class="badge">MIT License</span>
       </div>
       <div class="cta-buttons">
-        <a href="https://github.com/steveseguin/stevesapp" class="btn btn-primary">Get Started</a>
-        <a href="https://github.com/steveseguin/stevesapp#readme" class="btn btn-secondary">Read the Docs</a>
+        <a href="#connect" class="btn btn-primary">Connect Now</a>
+        <a href="https://github.com/steveseguin/stevesapp" class="btn btn-github">View on GitHub</a>
       </div>
     </div>
 
@@ -364,9 +530,20 @@
         </div>
       </div>
       <p class="install-note">
-        Open the URL on your phone, enter the token, and you're connected.
-        <br>Works on any device with a browser.
+        Then come back here and enter your token below to connect.
       </p>
+    </div>
+
+    <div id="connect" class="connect-section">
+      <div class="connect-box">
+        <h3>Connect to Your Server</h3>
+        <p class="subtitle">Enter the API token from your terminal</p>
+        <form id="connect-form">
+          <input type="password" id="token-input" placeholder="API Token" autocomplete="current-password">
+          <button type="submit" id="connect-btn">Connect via P2P</button>
+        </form>
+        <p id="connect-status" class="connect-status"></p>
+      </div>
     </div>
 
     <div class="comparison">
@@ -423,5 +600,291 @@
       </p>
     </footer>
   </div>
+
+  <!-- Terminal Screen (fullscreen overlay when connected) -->
+  <div id="terminal-screen">
+    <div id="terminal-header">
+      <button id="sessions-btn">Sessions</button>
+      <span class="session-info" id="session-info">Connecting...</span>
+      <button id="disconnect-btn">Disconnect</button>
+    </div>
+    <div id="sessions-panel" class="hidden">
+      <div id="sessions-list"></div>
+    </div>
+    <div id="terminal"></div>
+    <div id="keyboard-toolbar">
+      <button data-key="\x1b[A" class="arrow-btn">▲</button>
+      <button data-key="\x1b[B" class="arrow-btn">▼</button>
+      <button data-key="\x1b[D" class="arrow-btn">◀</button>
+      <button data-key="\x1b[C" class="arrow-btn">▶</button>
+      <button data-key="\x7f">⌫</button>
+      <button data-key="\x09">Tab</button>
+      <button data-key="\x03">Ctrl+C</button>
+      <button data-key="\x04">Ctrl+D</button>
+      <button data-key="\x1b">Esc</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
+  <script>
+    class TerminalClient {
+      constructor() {
+        this.vdo = null;
+        this.term = null;
+        this.fitAddon = null;
+        this.connected = false;
+        this.sessions = [];
+        this.currentSession = null;
+        this.sessionBuffers = {};
+        this.dataChannelReady = false;
+
+        // Check URL params or localStorage for token
+        const params = new URLSearchParams(window.location.search);
+        const savedToken = localStorage.getItem('steves-app-token');
+        if (params.get('token')) {
+          document.getElementById('token-input').value = params.get('token');
+        } else if (savedToken) {
+          document.getElementById('token-input').value = savedToken;
+        }
+
+        document.getElementById('connect-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.connect();
+        });
+        document.getElementById('disconnect-btn').addEventListener('click', () => this.disconnect());
+        document.getElementById('sessions-btn').addEventListener('click', () => this.toggleSessions());
+
+        // Auto-connect if token in URL
+        if (params.get('token')) {
+          this.connect();
+        }
+      }
+
+      toggleSessions() {
+        const panel = document.getElementById('sessions-panel');
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) {
+          this.renderSessions();
+        }
+      }
+
+      renderSessions() {
+        const list = document.getElementById('sessions-list');
+        list.innerHTML = '';
+        for (const session of this.sessions) {
+          const div = document.createElement('div');
+          div.className = 'session-item' + (session.id === this.currentSession ? ' active' : '');
+          div.innerHTML = `<div class="type">${session.type}</div><div>${session.shell || session.id.substring(0, 8)}</div>`;
+          div.addEventListener('click', () => {
+            this.selectSession(session.id);
+            document.getElementById('sessions-panel').classList.add('hidden');
+          });
+          list.appendChild(div);
+        }
+        if (this.sessions.length === 0) {
+          list.innerHTML = '<div style="color: #a0a0a0; padding: 10px;">No sessions</div>';
+        }
+      }
+
+      selectSession(sessionId) {
+        this.currentSession = sessionId;
+        const session = this.sessions.find(s => s.id === sessionId);
+        document.getElementById('session-info').textContent = session ? (session.shell || sessionId.substring(0, 8)) : sessionId.substring(0, 8);
+        if (this.term) {
+          this.term.clear();
+          if (this.sessionBuffers[sessionId]) {
+            this.term.write(this.sessionBuffers[sessionId]);
+          }
+        }
+        this.sendData({ type: 'attach', sessionId });
+      }
+
+      async connect() {
+        const token = document.getElementById('token-input').value.trim();
+        const status = document.getElementById('connect-status');
+        const btn = document.getElementById('connect-btn');
+
+        if (!token) {
+          status.textContent = 'Please enter a token';
+          status.className = 'connect-status error';
+          return;
+        }
+
+        localStorage.setItem('steves-app-token', token);
+        status.textContent = 'Connecting...';
+        status.className = 'connect-status';
+        btn.disabled = true;
+
+        try {
+          this.vdo = new VDONinjaSDK();
+
+          this.vdo.addEventListener('dataReceived', (e) => {
+            const msg = e.detail.data;
+            if (msg.type === 'output') {
+              const sid = msg.sessionId || this.currentSession;
+              if (sid) {
+                this.sessionBuffers[sid] = (this.sessionBuffers[sid] || '') + msg.data;
+                if (this.sessionBuffers[sid].length > 50000) {
+                  this.sessionBuffers[sid] = this.sessionBuffers[sid].slice(-50000);
+                }
+              }
+              if (!this.currentSession && sid) this.selectSession(sid);
+              if (this.term && (!msg.sessionId || msg.sessionId === this.currentSession)) {
+                this.term.write(msg.data);
+              }
+            } else if (msg.type === 'buffer') {
+              const sid = msg.sessionId || this.currentSession;
+              if (sid) this.sessionBuffers[sid] = msg.data;
+              if (!this.currentSession && sid) this.selectSession(sid);
+              if (this.term && (!msg.sessionId || msg.sessionId === this.currentSession)) {
+                this.term.clear();
+                if (msg.data) this.term.write(msg.data);
+              }
+            } else if (msg.type === 'sessions') {
+              this.sessions = msg.sessions;
+              if (msg.sessions.length > 0 && !this.currentSession) {
+                this.selectSession(msg.sessions[0].id);
+              }
+            } else if (msg.type === 'info') {
+              if (msg.sessionId) {
+                this.currentSession = msg.sessionId;
+                const session = this.sessions.find(s => s.id === msg.sessionId);
+                document.getElementById('session-info').textContent = (session?.shell || msg.sessionType) + ': ' + msg.sessionId.substring(0, 8);
+              }
+            }
+          });
+
+          this.vdo.addEventListener('dataChannelOpen', () => {
+            this.dataChannelReady = true;
+            document.getElementById('session-info').textContent = 'Connected - waiting for sessions...';
+          });
+
+          await this.vdo.connect();
+
+          this.viewedStream = false;
+          this.vdo.addEventListener('listing', (e) => {
+            if (this.viewedStream) return;
+            const list = e.detail.list || [];
+            const hostEntry = list.find(entry => entry.streamID === 'host') || list.find(entry => entry.streamID?.startsWith('host'));
+            if (hostEntry) {
+              this.viewedStream = true;
+              this.vdo.view(hostEntry.streamID, { audio: false, video: false });
+            }
+          });
+
+          this.vdo.addEventListener('videoaddedtoroom', (e) => {
+            if (this.viewedStream) return;
+            const streamID = e.detail.streamID;
+            if (streamID && (streamID === 'host' || streamID.startsWith('host'))) {
+              this.viewedStream = true;
+              this.vdo.view(streamID, { audio: false, video: false });
+            }
+          });
+
+          await this.vdo.joinRoom({ room: 'steves-app', password: token });
+
+          this.connected = true;
+          this.showTerminal();
+
+        } catch (err) {
+          status.textContent = 'Failed: ' + err.message;
+          status.className = 'connect-status error';
+          btn.disabled = false;
+        }
+      }
+
+      showTerminal() {
+        document.getElementById('terminal-screen').classList.add('active');
+
+        this.term = new Terminal({
+          cursorBlink: true,
+          fontSize: 14,
+          fontFamily: 'monospace',
+          theme: {
+            background: '#1a1a2e',
+            foreground: '#eaeaea',
+            cursor: '#e94560',
+            black: '#1a1a2e',
+            red: '#e94560',
+            green: '#4ecca3',
+            yellow: '#f9ed69',
+            blue: '#3498db',
+            magenta: '#9b59b6',
+            cyan: '#00d9ff',
+            white: '#eaeaea',
+            brightBlack: '#4a4a6e',
+            brightRed: '#ff6b8a',
+            brightGreen: '#7dffce',
+            brightYellow: '#fff89a',
+            brightBlue: '#5dade2',
+            brightMagenta: '#bb8fce',
+            brightCyan: '#40e0ff',
+            brightWhite: '#ffffff'
+          }
+        });
+
+        this.fitAddon = new FitAddon.FitAddon();
+        this.term.loadAddon(this.fitAddon);
+        this.term.open(document.getElementById('terminal'));
+        this.fitAddon.fit();
+
+        this.term.onData((data) => {
+          this.sendData({ type: 'input', data, sessionId: this.currentSession });
+        });
+
+        // Keyboard toolbar
+        document.querySelectorAll('#keyboard-toolbar button[data-key]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const key = btn.dataset.key.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
+              String.fromCharCode(parseInt(hex, 16))
+            );
+            this.sendData({ type: 'input', data: key, sessionId: this.currentSession });
+            this.term.focus();
+          });
+        });
+
+        // Handle paste
+        document.addEventListener('paste', (e) => {
+          if (!this.term) return;
+          e.preventDefault();
+          const text = e.clipboardData?.getData('text');
+          if (text && this.currentSession) {
+            this.sendData({ type: 'input', data: text, sessionId: this.currentSession, paste: true });
+          }
+        });
+
+        this.term.focus();
+        window.addEventListener('resize', () => this.fitAddon.fit());
+      }
+
+      sendData(data) {
+        if (this.vdo && this.connected && this.dataChannelReady) {
+          this.vdo.sendData(data);
+        }
+      }
+
+      disconnect() {
+        if (this.vdo) {
+          this.vdo.disconnect();
+          this.vdo = null;
+        }
+        this.connected = false;
+        if (this.term) {
+          this.term.dispose();
+          this.term = null;
+        }
+        document.getElementById('terminal-screen').classList.remove('active');
+        document.getElementById('connect-status').textContent = 'Disconnected';
+        document.getElementById('connect-btn').disabled = false;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      window.client = new TerminalClient();
+    });
+  </script>
 </body>
 </html>
