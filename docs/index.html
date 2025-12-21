@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steve's App - Remote Terminal Access for AI Coding Assistants</title>
+  <meta name="description" content="Monitor Claude Code, Codex, and OpenCode from your phone. No VPN, no accounts, just P2P browser access. Free and open source.">
+  <meta property="og:title" content="Steve's App - Remote Terminal for AI Coding">
+  <meta property="og:description" content="Watch your AI code from anywhere. No VPN, no accounts, just open a browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://steves.app">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖥️</text></svg>">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #1a1a2e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .landing {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #eaeaea;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #e94560;
+    }
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+    .nav-links a {
+      color: #a0a0c0;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: #eaeaea;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      margin-bottom: 24px;
+      line-height: 1.2;
+    }
+    .hero h1 span {
+      color: #e94560;
+    }
+    .tagline {
+      font-size: 1.3rem;
+      color: #a0a0c0;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+    .badge {
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: #e94560;
+    }
+
+    .cta-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #e94560;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #d63850;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #eaeaea;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto 60px;
+      padding: 0 20px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .feature-card h3 {
+      color: #4ecca3;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+    .feature-card p {
+      color: #a0a0c0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .usecases {
+      background: rgba(0,0,0,0.2);
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .usecases h2 {
+      margin-bottom: 40px;
+      font-size: 1.8rem;
+    }
+    .usecase-grid {
+      display: flex;
+      justify-content: center;
+      gap: 50px;
+      flex-wrap: wrap;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .usecase {
+      text-align: center;
+    }
+    .usecase-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+    .usecase-name {
+      font-weight: 600;
+      color: #eaeaea;
+      font-size: 1.1rem;
+    }
+    .usecase-desc {
+      font-size: 0.9rem;
+      color: #a0a0c0;
+      margin-top: 4px;
+    }
+
+    .install {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .install h2 {
+      margin-bottom: 30px;
+      font-size: 1.8rem;
+    }
+    .code-block {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: 'SF Mono', Monaco, 'Consolas', monospace;
+      font-size: 0.95rem;
+      text-align: left;
+      margin-bottom: 24px;
+    }
+    .code-comment {
+      color: #666;
+    }
+    .code-cmd {
+      color: #4ecca3;
+      margin: 4px 0;
+    }
+    .code-output {
+      color: #a0a0c0;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .install-note {
+      color: #a0a0c0;
+      font-size: 0.95rem;
+    }
+
+    .comparison {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+    .comparison h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.8rem;
+    }
+    .comparison table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.02);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .comparison th, .comparison td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .comparison th {
+      background: rgba(0,0,0,0.2);
+      color: #eaeaea;
+      font-weight: 600;
+    }
+    .comparison td {
+      color: #a0a0c0;
+    }
+    .comparison tr:last-child td {
+      border-bottom: none;
+    }
+    .check { color: #4ecca3; }
+    .cross { color: #e94560; }
+
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+      font-size: 0.9rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    footer a {
+      color: #a0a0c0;
+      text-decoration: none;
+    }
+    footer a:hover {
+      color: #eaeaea;
+    }
+
+    @media (max-width: 600px) {
+      .nav {
+        padding: 16px 20px;
+      }
+      .hero {
+        padding: 40px 20px;
+      }
+      .usecase-grid {
+        gap: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="landing">
+    <nav class="nav">
+      <div class="logo">Steve's App</div>
+      <div class="nav-links">
+        <a href="https://github.com/steveseguin/stevesapp">GitHub</a>
+        <a href="https://github.com/steveseguin/stevesapp#installation">Docs</a>
+      </div>
+    </nav>
+
+    <div class="hero">
+      <h1>Run <span>Claude Code</span> Remotely From Your Browser</h1>
+      <p class="tagline">
+        Monitor your AI coding sessions from your phone. Access Claude Code, Codex, OpenCode,
+        or any terminal app via P2P - no VPN, no VPS, no special apps, no accounts.
+        Just open a browser and connect.
+      </p>
+      <div class="badges">
+        <span class="badge">No VPN Needed</span>
+        <span class="badge">No Accounts</span>
+        <span class="badge">Free Forever</span>
+        <span class="badge">MIT License</span>
+      </div>
+      <div class="cta-buttons">
+        <a href="https://github.com/steveseguin/stevesapp" class="btn btn-primary">Get Started</a>
+        <a href="https://github.com/steveseguin/stevesapp#readme" class="btn btn-secondary">Read the Docs</a>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature-card">
+        <h3>The Problem</h3>
+        <p>You're running Claude Code on your PC or VPS. You want to check on it from your phone. Current solutions require Tailscale, VPNs, SSH apps, accounts, and 30+ minutes of setup.</p>
+      </div>
+      <div class="feature-card">
+        <h3>The Solution</h3>
+        <p>Run one command, get a token, open your browser. That's it. P2P encrypted connection via WebRTC - works behind NAT, no port forwarding, no VPS needed.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Vibe Coder Friendly</h3>
+        <p>Watch AI code in real-time from your phone. Full terminal with colors, TUI support, interactive prompts. Perfect for monitoring long-running agentic sessions.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Truly Free</h3>
+        <p>MIT licensed, fully open source, no accounts, no subscriptions, no tracking. Self-host it, fork it, modify it - it's yours.</p>
+      </div>
+    </div>
+
+    <div class="usecases">
+      <h2>Built for Modern AI Development</h2>
+      <div class="usecase-grid">
+        <div class="usecase">
+          <div class="usecase-icon">🤖</div>
+          <div class="usecase-name">Claude Code</div>
+          <div class="usecase-desc">Watch agentic coding in action</div>
+        </div>
+        <div class="usecase">
+          <div class="usecase-icon">🧠</div>
+          <div class="usecase-name">GPT Codex</div>
+          <div class="usecase-desc">Monitor code generation</div>
+        </div>
+        <div class="usecase">
+          <div class="usecase-icon">💻</div>
+          <div class="usecase-name">OpenCode</div>
+          <div class="usecase-desc">Track AI pair programming</div>
+        </div>
+        <div class="usecase">
+          <div class="usecase-icon">🔧</div>
+          <div class="usecase-name">Any Terminal</div>
+          <div class="usecase-desc">Bash, Zsh, SSH, and more</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="install">
+      <h2>Get Started in 60 Seconds</h2>
+      <div class="code-block">
+        <div class="code-comment"># Clone and run (requires Linux or WSL)</div>
+        <div class="code-cmd">git clone https://github.com/steveseguin/stevesapp</div>
+        <div class="code-cmd">cd stevesapp && npm install && npm start</div>
+        <div class="code-output">
+          Steve's App running on http://0.0.0.0:3000<br>
+          API Token: abc123xyz...
+        </div>
+      </div>
+      <p class="install-note">
+        Open the URL on your phone, enter the token, and you're connected.
+        <br>Works on any device with a browser.
+      </p>
+    </div>
+
+    <div class="comparison">
+      <h2>Why Steve's App?</h2>
+      <table>
+        <tr>
+          <th>Feature</th>
+          <th>Tailscale + SSH</th>
+          <th>Steve's App</th>
+        </tr>
+        <tr>
+          <td>VPN Required</td>
+          <td class="cross">Yes</td>
+          <td class="check">No</td>
+        </tr>
+        <tr>
+          <td>Account Required</td>
+          <td class="cross">Yes (Tailscale)</td>
+          <td class="check">No</td>
+        </tr>
+        <tr>
+          <td>Mobile App Install</td>
+          <td class="cross">Yes (SSH app)</td>
+          <td class="check">No (just browser)</td>
+        </tr>
+        <tr>
+          <td>Works Behind NAT</td>
+          <td>With Tailscale</td>
+          <td class="check">Yes (P2P)</td>
+        </tr>
+        <tr>
+          <td>Setup Time</td>
+          <td>15-30 min</td>
+          <td class="check">60 seconds</td>
+        </tr>
+        <tr>
+          <td>Cost</td>
+          <td>Free tier limits</td>
+          <td class="check">Free forever</td>
+        </tr>
+        <tr>
+          <td>Open Source</td>
+          <td>Partially</td>
+          <td class="check">Fully (MIT)</td>
+        </tr>
+      </table>
+    </div>
+
+    <footer>
+      <p>
+        MIT License &bull;
+        <a href="https://github.com/steveseguin/stevesapp">GitHub</a> &bull;
+        Built for the AI coding assistant era
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
