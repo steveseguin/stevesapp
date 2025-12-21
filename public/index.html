@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>Terminal Hub - Remote Terminal Access for AI Coding Assistants</title>
+  <meta name="description" content="Access your Windows terminal from anywhere. Perfect for Claude Code, GPT Codex, and OpenCode users. No VPN, no accounts, just P2P.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Landing page styles */
+    .landing {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #eaeaea;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .landing-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .landing-logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #e94560;
+    }
+    .landing-hero {
+      text-align: center;
+      padding: 60px 20px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .landing-hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+    .landing-hero h1 span {
+      color: #e94560;
+    }
+    .landing-hero .tagline {
+      font-size: 1.25rem;
+      color: #a0a0c0;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    .landing-badges {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+    .badge {
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: #e94560;
+    }
+    .landing-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto 60px;
+      padding: 0 20px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: left;
+    }
+    .feature-card h3 {
+      color: #4ecca3;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+    .feature-card p {
+      color: #a0a0c0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .landing-usecases {
+      background: rgba(0,0,0,0.2);
+      padding: 50px 20px;
+      text-align: center;
+    }
+    .landing-usecases h2 {
+      margin-bottom: 30px;
+      font-size: 1.5rem;
+    }
+    .usecase-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .usecase {
+      text-align: center;
+    }
+    .usecase-icon {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    .usecase-name {
+      font-weight: 600;
+      color: #eaeaea;
+    }
+    .usecase-desc {
+      font-size: 0.85rem;
+      color: #a0a0c0;
+    }
+    .landing-login {
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .landing-login h2 {
+      margin-bottom: 10px;
+    }
+    .landing-login .subtitle {
+      color: #a0a0c0;
+      margin-bottom: 30px;
+    }
+    .login-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #eaeaea;
+      font-size: 1rem;
+      margin-bottom: 15px;
+    }
+    .login-box input::placeholder {
+      color: #666;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: #e94560;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-box button:hover {
+      background: #d63850;
+    }
+    .login-box .error {
+      color: #e94560;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    .landing-footer {
+      text-align: center;
+      padding: 30px;
+      color: #666;
+      font-size: 0.85rem;
+    }
+    .landing-footer a {
+      color: #a0a0c0;
+      text-decoration: none;
+    }
+    .cta-phone {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #a0a0c0;
+    }
+    .cta-phone a {
+      color: #4ecca3;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Landing / Auth Screen -->
+    <div id="auth-screen" class="screen landing">
+      <nav class="landing-nav">
+        <div class="landing-logo">Terminal Hub</div>
+        <a href="https://github.com/nicehash/terminal-hub" target="_blank" style="color: #a0a0c0; text-decoration: none;">GitHub</a>
+      </nav>
+
+      <div class="landing-hero">
+        <h1>Access Your <span>Windows Terminal</span> From Anywhere</h1>
+        <p class="tagline">
+          Perfect for AI coding assistants like Claude Code, GPT Codex, and OpenCode.
+          Monitor builds, review logs, and interact with your dev environment from your phone or any browser.
+        </p>
+        <div class="landing-badges">
+          <span class="badge">No VPN Required</span>
+          <span class="badge">No Account Needed</span>
+          <span class="badge">Works on Windows</span>
+          <span class="badge">P2P Encrypted</span>
+        </div>
+      </div>
+
+      <div class="landing-features">
+        <div class="feature-card">
+          <h3>Watch AI Work in Real-Time</h3>
+          <p>See exactly what Claude Code, Codex, or OpenCode are doing on your machine. Monitor builds, catch errors early, and stay informed without interrupting your workflow.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Zero Configuration</h3>
+          <p>No VPN setup, no port forwarding, no firewall rules. Just run the server and connect from anywhere using a simple token. Works behind NAT and corporate firewalls.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Peer-to-Peer Security</h3>
+          <p>Direct encrypted connection between your devices using WebRTC. Your terminal data never touches third-party servers. Open source and auditable.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Mobile-First Design</h3>
+          <p>Purpose-built phone interface with touch-friendly controls, virtual keyboard buttons for Ctrl+C, arrow keys, and more. Works great on iOS and Android.</p>
+        </div>
+      </div>
+
+      <div class="landing-usecases">
+        <h2>Built for Modern AI Development</h2>
+        <div class="usecase-grid">
+          <div class="usecase">
+            <div class="usecase-icon">🤖</div>
+            <div class="usecase-name">Claude Code</div>
+            <div class="usecase-desc">Watch agentic coding in action</div>
+          </div>
+          <div class="usecase">
+            <div class="usecase-icon">🧠</div>
+            <div class="usecase-name">GPT Codex</div>
+            <div class="usecase-desc">Monitor code generation</div>
+          </div>
+          <div class="usecase">
+            <div class="usecase-icon">💻</div>
+            <div class="usecase-name">OpenCode</div>
+            <div class="usecase-desc">Track AI pair programming</div>
+          </div>
+          <div class="usecase">
+            <div class="usecase-icon">🔧</div>
+            <div class="usecase-name">Any Terminal</div>
+            <div class="usecase-desc">CMD, PowerShell, WSL, SSH</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-howto" style="max-width: 700px; margin: 0 auto; padding: 40px 20px; text-align: left;">
+        <h2 style="text-align: center; margin-bottom: 30px;">Get Started in 60 Seconds</h2>
+        <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; font-family: monospace; font-size: 0.9rem; margin-bottom: 20px;">
+          <div style="color: #a0a0c0; margin-bottom: 8px;"># Install and run</div>
+          <div style="color: #4ecca3;">npx terminal-hub</div>
+          <div style="color: #a0a0c0; margin-top: 16px; margin-bottom: 8px;"># Or clone and run</div>
+          <div style="color: #4ecca3;">git clone https://github.com/nicehash/terminal-hub</div>
+          <div style="color: #4ecca3;">cd terminal-hub && npm install && npm start</div>
+        </div>
+        <p style="color: #a0a0c0; text-align: center; margin-bottom: 10px;">
+          The server displays your token on startup. Enter it below to connect, or scan the QR code on your phone.
+        </p>
+      </div>
+
+      <div class="landing-login">
+        <h2>Connect to Your Terminal</h2>
+        <p class="subtitle">Enter the token from your Terminal Hub server</p>
+        <div class="login-box">
+          <input type="password" id="token-input" placeholder="Enter API Token" autofocus>
+          <button id="connect-btn">Connect</button>
+          <p id="auth-error" class="error"></p>
+        </div>
+        <p class="cta-phone">
+          On mobile? Use <a href="/phone.html">the phone interface</a> for a touch-optimized experience.
+        </p>
+      </div>
+
+      <footer class="landing-footer">
+        <p>Open source under MIT license. <a href="https://github.com/nicehash/terminal-hub">View on GitHub</a></p>
+      </footer>
+    </div>
+
+    <!-- Main Screen -->
+    <div id="main-screen" class="screen hidden">
+      <!-- Sidebar -->
+      <div id="sidebar">
+        <div class="sidebar-header">
+          <h2>Sessions</h2>
+          <button id="toggle-sidebar" class="icon-btn">☰</button>
+        </div>
+
+        <div class="session-list" id="session-list">
+          <!-- Sessions populated dynamically -->
+        </div>
+
+        <div class="sidebar-actions">
+          <div class="new-session">
+            <select id="shell-select">
+              <option value="cmd.exe">cmd.exe</option>
+              <option value="powershell.exe">PowerShell</option>
+              <option value="wsl.exe">WSL</option>
+              <option value="custom">Custom...</option>
+            </select>
+            <button id="new-session-btn">+ New</button>
+          </div>
+
+          <div class="windows-section">
+            <button id="refresh-windows-btn">Scan Windows</button>
+            <div id="windows-list" class="windows-list">
+              <!-- Windows populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div id="terminal-container">
+        <div id="terminal-header">
+          <button id="floating-toggle">☰</button>
+          <span id="session-info">No session selected</span>
+          <button id="disconnect-btn" class="hidden">Disconnect</button>
+          <div id="p2p-controls">
+            <button id="p2p-toggle">Share P2P</button>
+            <span id="p2p-status" class="hidden"></span>
+          </div>
+        </div>
+        <div id="terminal"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

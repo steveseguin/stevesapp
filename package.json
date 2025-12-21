@@ -1,0 +1,24 @@
+{
+  "name": "terminal-hub",
+  "version": "1.0.0",
+  "description": "Remote terminal multiplexer with window capture support",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0",
+    "ws": "^8.14.2"
+  },
+  "optionalDependencies": {
+    "@roamhq/wrtc": "^0.9.1",
+    "node-datachannel": "^0.31.0",
+    "node-pty": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
