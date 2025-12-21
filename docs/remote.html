@@ -4,15 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="manifest" href="/remote.webmanifest">
+  <meta name="theme-color" content="#1a1a2e">
   <title>Steve's App - Remote Terminal</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
     body {
       background: #1a1a2e;
       color: #eaeaea;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
@@ -23,6 +30,8 @@
       justify-content: center;
       height: 100%;
       padding: 20px;
+      min-height: 0;
+      overflow-y: auto;
     }
     #connect-screen h1 { color: #e94560; margin-bottom: 20px; }
     #connect-screen input {
@@ -45,8 +54,24 @@
       font-size: 16px;
       cursor: pointer;
     }
+    .install-btn {
+      margin-top: 10px;
+      padding: 10px 24px;
+      background: transparent;
+      color: #a0a0a0;
+      border: 1px solid #2a2a4e;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
     #status { margin-top: 15px; color: #a0a0a0; }
-    #terminal-screen { display: none; flex-direction: column; height: 100%; }
+    #terminal-screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
     #header {
       display: flex;
       justify-content: space-between;
@@ -64,7 +89,12 @@
       color: white;
       font-size: 12px;
     }
-    #terminal { flex: 1; background: #000; min-height: 0; }
+    #terminal {
+      flex: 1;
+      background: #000;
+      min-height: 0;
+      overflow: hidden;
+    }
     #terminal.hscroll .xterm-viewport { overflow-x: auto; }
     #terminal.hscroll .xterm-screen { width: max-content; }
     .hidden { display: none !important; }
@@ -252,6 +282,7 @@
       <button type="submit" id="connect-btn">Connect</button>
     </form>
     <div id="status"></div>
+    <button type="button" id="install-btn" class="install-btn hidden">Install App</button>
   </div>
 
   <div id="terminal-screen">
@@ -336,6 +367,7 @@
         this.terminalScreen = document.getElementById('terminal-screen');
         this.passwordInput = document.getElementById('password-input');
         this.connectBtn = document.getElementById('connect-btn');
+        this.installBtn = document.getElementById('install-btn');
         this.disconnectBtn = document.getElementById('disconnect-btn');
         this.sessionsBtn = document.getElementById('sessions-btn');
         this.sessionsPanel = document.getElementById('sessions-panel');
@@ -371,8 +403,17 @@
         if (params.get('hscroll') === '0') {
           this.hscrollEnabled = false;
         }
-        if (params.get('token')) this.passwordInput.value = params.get('token');
-        else if (savedToken) this.passwordInput.value = savedToken;
+        const tokenParam = params.get('token');
+        if (tokenParam) {
+          this.passwordInput.value = tokenParam;
+          localStorage.setItem('steves-app-token', tokenParam);
+          params.delete('token');
+          const qs = params.toString();
+          const cleanUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
+        } else if (savedToken) {
+          this.passwordInput.value = savedToken;
+        }
 
         this.fontSizeInput.value = this.fontSize;
         this.fontSizeValue.textContent = this.fontSize;
@@ -388,6 +429,9 @@
           e.preventDefault();
           this.connect();
         });
+        if (this.installBtn) {
+          this.installBtn.addEventListener('click', () => this.promptInstall());
+        }
         this.disconnectBtn.addEventListener('click', () => this.disconnect());
         this.sessionsBtn.addEventListener('click', () => this.toggleSessionsPanel());
         this.fontSizeInput.addEventListener('input', () => {
@@ -426,9 +470,28 @@
         });
 
         // Auto-connect if token provided via URL
-        if (params.get('token')) {
+        if (tokenParam) {
           this.connect();
         }
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+
+        this.installPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          this.installPrompt = e;
+          if (this.installBtn) {
+            this.installBtn.classList.remove('hidden');
+          }
+        });
+        window.addEventListener('appinstalled', () => {
+          this.installPrompt = null;
+          if (this.installBtn) {
+            this.installBtn.classList.add('hidden');
+          }
+        });
       }
 
       toggleSessionsPanel() {
@@ -436,6 +499,18 @@
         if (!this.sessionsPanel.classList.contains('hidden')) {
           this.renderSessions();
         }
+      }
+
+      promptInstall() {
+        if (!this.installPrompt) return;
+        const promptEvent = this.installPrompt;
+        this.installPrompt = null;
+        promptEvent.prompt();
+        promptEvent.userChoice.finally(() => {
+          if (this.installBtn) {
+            this.installBtn.classList.add('hidden');
+          }
+        });
       }
 
       createSession(shell) {

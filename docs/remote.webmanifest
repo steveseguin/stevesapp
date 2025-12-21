@@ -1,0 +1,16 @@
+{
+  "name": "Steve's Remote",
+  "short_name": "Remote",
+  "start_url": "/remote.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

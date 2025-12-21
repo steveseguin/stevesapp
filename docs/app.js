@@ -39,6 +39,8 @@ class TerminalHub {
 
     const params = new URLSearchParams(window.location.search);
     this.debug = params.get('debug') === '1';
+    this.isMobile = window.matchMedia('(pointer: coarse)').matches
+      || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     this.fontSize = parseInt(localStorage.getItem('steves-app-font-size'), 10);
     if (!Number.isFinite(this.fontSize)) this.fontSize = 14;
     const storedCols = parseInt(localStorage.getItem('steves-app-cols'), 10);
@@ -64,6 +66,7 @@ class TerminalHub {
     this.initElements();
     this.initDisplaySettings();
     this.initEvents();
+    this.registerServiceWorker();
 
     // Auto-connect if token exists
     if (this.token) {
@@ -103,6 +106,25 @@ class TerminalHub {
     // P2P controls
     this.p2pToggle = document.getElementById('p2p-toggle');
     this.p2pStatus = document.getElementById('p2p-status');
+
+    if (this.tokenInput && !this.isMobile) {
+      this.tokenInput.focus();
+    }
+  }
+
+  registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }
+
+  shouldUseRemoteUI() {
+    return this.isMobile;
+  }
+
+  buildRemoteUrl(token) {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/remote.html?token=${encodeURIComponent(token)}`;
   }
 
   initDisplaySettings() {
@@ -232,10 +254,18 @@ class TerminalHub {
 
     this.authError.textContent = '';
     localStorage.setItem('steves-app-token', this.token);
+    if (this.shouldUseRemoteUI()) {
+      window.location.assign(this.buildRemoteUrl(this.token));
+      return;
+    }
     this.connect();
   }
 
   connect() {
+    if (this.token && this.shouldUseRemoteUI()) {
+      window.location.assign(this.buildRemoteUrl(this.token));
+      return;
+    }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}?token=${encodeURIComponent(this.token)}`;
 
