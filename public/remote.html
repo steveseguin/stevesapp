@@ -168,6 +168,34 @@
       color: #a0a0a0;
       margin-top: 2px;
     }
+    .new-session-row {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-bottom: 1px solid #2a2a4e;
+      margin-bottom: 8px;
+    }
+    .new-session-row select {
+      flex: 1;
+      padding: 8px;
+      background: #1a1a2e;
+      border: 1px solid #3a3a5e;
+      border-radius: 4px;
+      color: #eaeaea;
+      font-size: 14px;
+    }
+    .new-session-row button {
+      padding: 8px 12px;
+      background: #4ecca3;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .new-session-row button:active {
+      background: #3db892;
+    }
   </style>
 </head>
 <body>
@@ -187,6 +215,14 @@
       <button id="disconnect-btn">Disconnect</button>
     </div>
     <div id="sessions-panel" class="hidden">
+      <div class="new-session-row">
+        <select id="shell-select">
+          <option value="bash">bash</option>
+          <option value="zsh">zsh</option>
+          <option value="sh">sh</option>
+        </select>
+        <button id="new-session-btn">+ New</button>
+      </div>
       <div id="sessions-list"></div>
     </div>
     <div id="terminal"></div>
@@ -254,6 +290,12 @@
         this.disconnectBtn.addEventListener('click', () => this.disconnect());
         this.sessionsBtn.addEventListener('click', () => this.toggleSessionsPanel());
 
+        // New session button
+        document.getElementById('new-session-btn').addEventListener('click', () => {
+          const shell = document.getElementById('shell-select').value;
+          this.createSession(shell);
+        });
+
         // Auto-connect if token provided via URL
         if (params.get('token')) {
           this.connect();
@@ -265,6 +307,13 @@
         if (!this.sessionsPanel.classList.contains('hidden')) {
           this.renderSessions();
         }
+      }
+
+      createSession(shell) {
+        console.log('Creating new session:', shell);
+        this.sendData({ type: 'createSession', shell });
+        // Hide panel after creating
+        this.sessionsPanel.classList.add('hidden');
       }
 
       ensureSession(sessionId) {

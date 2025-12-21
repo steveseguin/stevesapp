@@ -355,6 +355,20 @@ class VdoBridge {
         break;
       }
 
+      case 'createSession': {
+        // Create a new session from remote client
+        const shell = msg.shell || 'bash';
+        console.log('[VDO] Creating new session:', shell);
+        const newSession = this.sessionManager.createSession({ shell });
+        // Notify all peers about the new session
+        this.handleSessionChange();
+        // Auto-attach the creator to the new session
+        this.handleDataReceived({
+          detail: { uuid, data: { type: 'attach', sessionId: newSession.id } }
+        });
+        break;
+      }
+
       case 'upload': {
         // Handle file upload from P2P client
         console.log('[VDO] Upload received:', msg.filename, 'size:', msg.data?.length, 'session:', msg.sessionId);
