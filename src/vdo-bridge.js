@@ -359,7 +359,7 @@ class VdoBridge {
         // Create a new session from remote client
         const shell = msg.shell || 'bash';
         console.log('[VDO] Creating new session:', shell);
-        const newSession = this.sessionManager.createSession({ shell });
+        const newSession = this.sessionManager.createNativeSession({ shell });
         // Notify all peers about the new session
         this.handleSessionChange();
         // Auto-attach the creator to the new session

@@ -146,6 +146,8 @@ class TerminalHub {
       this.reconnectAttempts = 0;
       this.showMainScreen();
       this.initTerminal();
+      // Auto-start P2P for remote access
+      this.startP2P();
     };
 
     this.ws.onmessage = (event) => {
