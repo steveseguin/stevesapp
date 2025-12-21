@@ -192,6 +192,88 @@
       color: #4ecca3;
       text-decoration: none;
     }
+    .qr-section {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .qr-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #a0a0c0;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .qr-toggle:hover {
+      background: rgba(255,255,255,0.05);
+      color: #eaeaea;
+    }
+    .qr-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .qr-modal.hidden {
+      display: none;
+    }
+    .qr-modal-content {
+      background: #1a1a2e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      max-width: 350px;
+      position: relative;
+    }
+    .qr-modal-content h3 {
+      margin-bottom: 5px;
+      color: #eaeaea;
+    }
+    .qr-subtitle {
+      color: #a0a0c0;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+    .qr-close {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #a0a0c0;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .qr-close:hover {
+      color: #e94560;
+    }
+    #qr-code {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    #qr-code canvas {
+      display: block;
+    }
+    .qr-url {
+      margin-top: 15px;
+      font-size: 0.8rem;
+      color: #666;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -283,6 +365,23 @@
           <input type="password" id="token-input" placeholder="Enter API Token" autofocus>
           <button id="connect-btn">Connect</button>
           <p id="auth-error" class="error"></p>
+          <div class="qr-section">
+            <button id="show-qr-btn" class="qr-toggle" title="Show QR Code for phone">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-5 0h2v3h-2v-3zm2 3h3v2h-3v-2zm3 2h2v3h-2v-3zm-5 0h2v3h-2v-3zm2 3h3v2h-3v-2z"/>
+              </svg>
+              <span>QR Code</span>
+            </button>
+          </div>
+        </div>
+        <div id="qr-modal" class="qr-modal hidden">
+          <div class="qr-modal-content">
+            <button id="close-qr-btn" class="qr-close">&times;</button>
+            <h3>Scan to Connect</h3>
+            <p class="qr-subtitle">Open phone.html and auto-login</p>
+            <div id="qr-code"></div>
+            <p class="qr-url" id="qr-url-display"></p>
+          </div>
         </div>
         <p class="cta-phone">
           On mobile? Use <a href="/phone.html">the phone interface</a> for a touch-optimized experience.
@@ -347,6 +446,55 @@
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="app.js"></script>
+  <script>
+    // QR Code functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      const showQrBtn = document.getElementById('show-qr-btn');
+      const closeQrBtn = document.getElementById('close-qr-btn');
+      const qrModal = document.getElementById('qr-modal');
+      const qrCodeEl = document.getElementById('qr-code');
+      const qrUrlDisplay = document.getElementById('qr-url-display');
+      const tokenInput = document.getElementById('token-input');
+
+      function generateQR() {
+        const token = tokenInput.value.trim();
+        if (!token) {
+          alert('Please enter a token first');
+          return;
+        }
+
+        // Build phone URL with token
+        const baseUrl = window.location.origin;
+        const phoneUrl = `${baseUrl}/phone.html?token=${encodeURIComponent(token)}`;
+
+        // Clear previous QR
+        qrCodeEl.innerHTML = '';
+
+        // Generate QR code
+        QRCode.toCanvas(phoneUrl, {
+          width: 200,
+          margin: 0,
+          color: { dark: '#1a1a2e', light: '#ffffff' }
+        }, (err, canvas) => {
+          if (err) {
+            console.error('QR generation error:', err);
+            return;
+          }
+          qrCodeEl.appendChild(canvas);
+        });
+
+        qrUrlDisplay.textContent = phoneUrl;
+        qrModal.classList.remove('hidden');
+      }
+
+      showQrBtn.addEventListener('click', generateQR);
+      closeQrBtn.addEventListener('click', () => qrModal.classList.add('hidden'));
+      qrModal.addEventListener('click', (e) => {
+        if (e.target === qrModal) qrModal.classList.add('hidden');
+      });
+    });
+  </script>
 </body>
 </html>
