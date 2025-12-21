@@ -85,6 +85,8 @@ class NativeSession extends EventEmitter {
         env: {
           ...process.env,
           TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
+          FORCE_COLOR: '3',  // Force 24-bit color output
           COLUMNS: String(this.cols),
           LINES: String(this.rows)
         },

@@ -67,7 +67,7 @@ npx terminal-hub
 ### Option 2: Clone and Run
 
 ```bash
-git clone https://github.com/nicehash/terminal-hub
+git clone https://github.com/steveseguin/stevesapp
 cd terminal-hub
 npm install
 npm start

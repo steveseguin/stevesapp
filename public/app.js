@@ -311,7 +311,25 @@ class TerminalHub {
         background: '#1a1a2e',
         foreground: '#eaeaea',
         cursor: '#e94560',
-        selection: 'rgba(233, 69, 96, 0.3)'
+        cursorAccent: '#1a1a2e',
+        selectionBackground: '#e9456050',
+        // ANSI 16-color palette
+        black: '#1a1a2e',
+        red: '#e94560',
+        green: '#4ecca3',
+        yellow: '#f9ed69',
+        blue: '#3498db',
+        magenta: '#9b59b6',
+        cyan: '#00d9ff',
+        white: '#eaeaea',
+        brightBlack: '#4a4a6e',
+        brightRed: '#ff6b8a',
+        brightGreen: '#7dffce',
+        brightYellow: '#fff89a',
+        brightBlue: '#5dade2',
+        brightMagenta: '#bb8fce',
+        brightCyan: '#40e0ff',
+        brightWhite: '#ffffff'
       },
       allowProposedApi: true,
       rightClickSelectsWord: true
