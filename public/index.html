@@ -510,13 +510,13 @@
           <div class="qr-modal-content">
             <button id="close-qr-btn" class="qr-close">&times;</button>
             <h3>Scan to Connect</h3>
-            <p class="qr-subtitle">Open phone.html and auto-login</p>
+            <p class="qr-subtitle">Scan to open remote terminal</p>
             <div id="qr-code"></div>
             <p class="qr-url" id="qr-url-display"></p>
           </div>
         </div>
         <p class="cta-phone">
-          On mobile? Use <a href="/phone.html">the phone interface</a> for a touch-optimized experience.
+          On mobile? Use <a href="/remote.html">the remote interface</a> for a touch-optimized experience.
         </p>
       </div>
 
@@ -599,7 +599,7 @@
 
         // Build phone URL with token
         const baseUrl = window.location.origin;
-        const phoneUrl = `${baseUrl}/phone.html?token=${encodeURIComponent(token)}`;
+        const phoneUrl = `${baseUrl}/remote.html?token=${encodeURIComponent(token)}`;
 
         // Clear previous QR
         qrCodeEl.innerHTML = '';

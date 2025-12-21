@@ -107,7 +107,7 @@ node-pty loaded - full PTY support enabled
 
 Steve's App running on http://0.0.0.0:3000
 Local access: http://localhost:3000
-Phone access: http://localhost:3000/phone.html
+Remote access: http://localhost:3000/remote.html
 
 API Token: your-token-here
 ```
@@ -122,7 +122,7 @@ API Token: your-token-here
 
 ### From Phone
 
-1. Open `http://YOUR_IP:3000/phone.html` on your phone
+1. Open `http://YOUR_IP:3000/remote.html` on your phone
 2. Enter the API token
 3. Tap **Connect**
 
@@ -227,7 +227,7 @@ Steve's App uses [VDO.Ninja SDK](https://sdk.vdo.ninja) for P2P connectivity:
 ┌──────────────────────────────────────────────────────┐
 │                    Your Phone                         │
 │  ┌─────────────────────────────────────────────────┐ │
-│  │  phone.html (mobile-optimized terminal UI)      │ │
+│  │  remote.html (mobile-optimized terminal UI)     │ │
 │  │  - Virtual keyboard with special keys           │ │
 │  │  - Image upload for AI context                  │ │
 │  │  - Session switching                            │ │
