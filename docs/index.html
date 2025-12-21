@@ -3,29 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>Steve's App - Remote Terminal Access for AI Coding Assistants</title>
-  <meta name="description" content="Monitor Claude Code, Codex, and OpenCode from your phone. No VPN, no accounts, just P2P browser access. Free and open source.">
-  <meta property="og:title" content="Steve's App - Remote Terminal for AI Coding">
-  <meta property="og:description" content="Watch your AI code from anywhere. No VPN, no accounts, just open a browser.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://steves.app">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖥️</text></svg>">
+  <meta name="description" content="Access your Windows terminal from anywhere. Perfect for Claude Code, GPT Codex, and OpenCode users. No VPN, no accounts, just P2P.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
   <style>
+    /* Global resets */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100%;
       background: #1a1a2e;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
+    #app { height: 100%; }
+    .screen { width: 100%; height: 100%; }
+    .hidden { display: none !important; }
 
+    /* Landing page styles */
     .landing {
       min-height: 100vh;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       color: #eaeaea;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-
-    .nav {
+    .landing-nav {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -33,45 +34,32 @@
       max-width: 1200px;
       margin: 0 auto;
     }
-    .logo {
+    .landing-logo {
       font-size: 1.5rem;
       font-weight: bold;
       color: #e94560;
     }
-    .nav-links {
-      display: flex;
-      gap: 24px;
-    }
-    .nav-links a {
-      color: #a0a0c0;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover {
-      color: #eaeaea;
-    }
-
-    .hero {
+    .landing-hero {
       text-align: center;
-      padding: 80px 20px 60px;
+      padding: 60px 20px 40px;
       max-width: 900px;
       margin: 0 auto;
     }
-    .hero h1 {
-      font-size: clamp(2.2rem, 5vw, 3.5rem);
-      margin-bottom: 24px;
+    .landing-hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      margin-bottom: 20px;
       line-height: 1.2;
     }
-    .hero h1 span {
+    .landing-hero h1 span {
       color: #e94560;
     }
-    .tagline {
-      font-size: 1.3rem;
+    .landing-hero .tagline {
+      font-size: 1.25rem;
       color: #a0a0c0;
-      margin-bottom: 32px;
+      margin-bottom: 30px;
       line-height: 1.6;
     }
-    .badges {
+    .landing-badges {
       display: flex;
       justify-content: center;
       gap: 12px;
@@ -86,114 +74,7 @@
       font-size: 0.9rem;
       color: #e94560;
     }
-
-    .cta-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .btn {
-      padding: 14px 28px;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s;
-      cursor: pointer;
-      border: none;
-    }
-    .btn-primary {
-      background: #e94560;
-      color: white;
-    }
-    .btn-primary:hover {
-      background: #d63850;
-    }
-    .btn-secondary {
-      background: transparent;
-      color: #eaeaea;
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    .btn-secondary:hover {
-      background: rgba(255,255,255,0.05);
-    }
-    .btn-github {
-      background: #333;
-      color: white;
-    }
-    .btn-github:hover {
-      background: #444;
-    }
-
-    /* Connect section */
-    .connect-section {
-      max-width: 500px;
-      margin: 0 auto;
-      padding: 40px 20px;
-      text-align: center;
-    }
-    .connect-box {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 30px;
-    }
-    .connect-box h3 {
-      margin-bottom: 8px;
-      font-size: 1.3rem;
-    }
-    .connect-box .subtitle {
-      color: #a0a0c0;
-      margin-bottom: 20px;
-      font-size: 0.95rem;
-    }
-    .connect-box input {
-      width: 100%;
-      padding: 14px;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 8px;
-      background: rgba(0,0,0,0.3);
-      color: #eaeaea;
-      font-size: 1rem;
-      margin-bottom: 12px;
-    }
-    .connect-box input::placeholder {
-      color: #666;
-    }
-    .connect-box button {
-      width: 100%;
-      padding: 14px;
-      background: #4ecca3;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .connect-box button:hover {
-      background: #3db892;
-    }
-    .connect-box button:disabled {
-      background: #666;
-      cursor: not-allowed;
-    }
-    .connect-status {
-      margin-top: 12px;
-      font-size: 0.9rem;
-      color: #a0a0c0;
-    }
-    .connect-status.error {
-      color: #e94560;
-    }
-    .connect-status.success {
-      color: #4ecca3;
-    }
-
-
-    .features {
+    .landing-features {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 24px;
@@ -206,6 +87,7 @@
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 12px;
       padding: 24px;
+      text-align: left;
     }
     .feature-card h3 {
       color: #4ecca3;
@@ -217,327 +99,531 @@
       font-size: 0.95rem;
       line-height: 1.5;
     }
-
-    .usecases {
+    .landing-usecases {
       background: rgba(0,0,0,0.2);
-      padding: 60px 20px;
+      padding: 50px 20px;
       text-align: center;
     }
-    .usecases h2 {
-      margin-bottom: 40px;
-      font-size: 1.8rem;
+    .landing-usecases h2 {
+      margin-bottom: 30px;
+      font-size: 1.5rem;
     }
     .usecase-grid {
       display: flex;
       justify-content: center;
-      gap: 50px;
+      gap: 40px;
       flex-wrap: wrap;
-      max-width: 900px;
+      max-width: 800px;
       margin: 0 auto;
     }
     .usecase {
       text-align: center;
     }
     .usecase-icon {
-      font-size: 3rem;
-      margin-bottom: 12px;
+      font-size: 2.5rem;
+      margin-bottom: 10px;
     }
     .usecase-name {
       font-weight: 600;
       color: #eaeaea;
-      font-size: 1.1rem;
     }
     .usecase-desc {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #a0a0c0;
-      margin-top: 4px;
     }
-
-    .install {
-      max-width: 700px;
-      margin: 0 auto;
+    .landing-login {
       padding: 60px 20px;
       text-align: center;
     }
-    .install h2 {
-      margin-bottom: 30px;
-      font-size: 1.8rem;
+    .landing-login h2 {
+      margin-bottom: 10px;
     }
-    .code-block {
-      background: rgba(0,0,0,0.4);
+    .landing-login .subtitle {
+      color: #a0a0c0;
+      margin-bottom: 30px;
+    }
+    .login-box {
+      background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 12px;
-      padding: 24px;
-      font-family: 'SF Mono', Monaco, 'Consolas', monospace;
-      font-size: 0.95rem;
-      text-align: left;
-      margin-bottom: 24px;
-    }
-    .code-comment {
-      color: #666;
-    }
-    .code-cmd {
-      color: #4ecca3;
-      margin: 4px 0;
-    }
-    .code-output {
-      color: #a0a0c0;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-    }
-    .install-note {
-      color: #a0a0c0;
-      font-size: 0.95rem;
-    }
-
-    .comparison {
-      max-width: 800px;
+      padding: 30px;
+      max-width: 400px;
       margin: 0 auto;
-      padding: 60px 20px;
     }
-    .comparison h2 {
-      text-align: center;
-      margin-bottom: 30px;
-      font-size: 1.8rem;
-    }
-    .comparison table {
+    .login-box input {
       width: 100%;
-      border-collapse: collapse;
-      background: rgba(255,255,255,0.02);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .comparison th, .comparison td {
-      padding: 14px 20px;
-      text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .comparison th {
-      background: rgba(0,0,0,0.2);
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
       color: #eaeaea;
-      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 15px;
     }
-    .comparison td {
-      color: #a0a0c0;
-    }
-    .comparison tr:last-child td {
-      border-bottom: none;
-    }
-    .check { color: #4ecca3; }
-    .cross { color: #e94560; }
-
-    footer {
-      text-align: center;
-      padding: 40px 20px;
+    .login-box input::placeholder {
       color: #666;
-      font-size: 0.9rem;
-      border-top: 1px solid rgba(255,255,255,0.05);
     }
-    footer a {
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: #e94560;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-box button:hover {
+      background: #d63850;
+    }
+    .login-box .error {
+      color: #e94560;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    .landing-footer {
+      text-align: center;
+      padding: 30px;
+      color: #666;
+      font-size: 0.85rem;
+    }
+    .landing-footer a {
       color: #a0a0c0;
       text-decoration: none;
     }
-    footer a:hover {
+    .cta-phone {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #a0a0c0;
+    }
+    .cta-phone a {
+      color: #4ecca3;
+      text-decoration: none;
+    }
+    .qr-section {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .qr-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #a0a0c0;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .qr-toggle:hover {
+      background: rgba(255,255,255,0.05);
+      color: #eaeaea;
+    }
+    .qr-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .qr-modal.hidden {
+      display: none;
+    }
+    .qr-modal-content {
+      background: #1a1a2e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      max-width: 350px;
+      position: relative;
+    }
+    .qr-modal-content h3 {
+      margin-bottom: 5px;
+      color: #eaeaea;
+    }
+    .qr-subtitle {
+      color: #a0a0c0;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+    .qr-close {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #a0a0c0;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .qr-close:hover {
+      color: #e94560;
+    }
+    #qr-code {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    #qr-code canvas {
+      display: block;
+    }
+    .qr-url {
+      margin-top: 15px;
+      font-size: 0.8rem;
+      color: #666;
+      word-break: break-all;
+    }
+
+    /* Main App Styles */
+    #main-screen { display: flex; height: 100%; background: #1a1a2e; }
+
+    #sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: #16213e;
+      border-right: 1px solid #2a2a4e;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar.collapsed { display: none; }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid #2a2a4e;
+    }
+    .sidebar-header h2 { font-size: 1.2rem; font-weight: 500; color: #eaeaea; }
+    .icon-btn {
+      background: none;
+      border: none;
+      color: #eaeaea;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .session-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .session-item {
+      padding: 12px;
+      margin-bottom: 4px;
+      background: #0f3460;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #eaeaea;
+    }
+    .session-item:hover, .session-item.active { background: #e94560; }
+    .session-item .type { font-size: 0.75rem; color: #a0a0a0; text-transform: uppercase; }
+    .session-item .name { font-size: 0.9rem; margin-top: 2px; }
+    .session-item .actions { margin-top: 8px; display: flex; gap: 8px; }
+    .session-item .actions button {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .sidebar-actions { padding: 1rem; border-top: 1px solid #2a2a4e; }
+    .new-session { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .new-session select {
+      flex: 1;
+      padding: 8px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4e;
+      border-radius: 4px;
+      color: #eaeaea;
+    }
+    .new-session button, .windows-section button {
+      padding: 8px 12px;
+      background: #4ecca3;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    .windows-section { margin-top: 1rem; }
+    .windows-section button { width: 100%; margin-bottom: 0.5rem; }
+    .windows-list { max-height: 200px; overflow-y: auto; }
+    .window-item {
+      padding: 8px;
+      margin-bottom: 4px;
+      background: #1a1a2e;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
       color: #eaeaea;
     }
 
-    @media (max-width: 600px) {
-      .nav {
-        padding: 16px 20px;
-      }
-      .hero {
-        padding: 40px 20px;
-      }
-      .usecase-grid {
-        gap: 30px;
-      }
+    #terminal-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: #1a1a2e;
     }
+    #terminal-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: #16213e;
+      border-bottom: 1px solid #2a2a4e;
+      gap: 12px;
+    }
+    #session-info { font-size: 0.9rem; color: #a0a0a0; }
+    #disconnect-btn, #p2p-toggle {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    #disconnect-btn { background: #e94560; }
+    #p2p-toggle { background: #4ecca3; }
+    #p2p-toggle.active { background: #e94560; }
+    #p2p-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    #p2p-status { font-size: 0.8rem; color: #4ecca3; }
+    #floating-toggle {
+      background: #0f3460;
+      border: 1px solid #2a2a4e;
+      border-radius: 4px;
+      padding: 6px 10px;
+      color: #eaeaea;
+      cursor: pointer;
+    }
+    #terminal { flex: 1; background: #000; padding: 4px; }
   </style>
 </head>
 <body>
-  <div class="landing">
-    <nav class="nav">
-      <div class="logo">Steve's App</div>
-      <div class="nav-links">
-        <a href="https://github.com/steveseguin/stevesapp">GitHub</a>
-        <a href="https://github.com/steveseguin/stevesapp#installation">Docs</a>
-      </div>
-    </nav>
+  <div id="app">
+    <!-- Landing / Auth Screen -->
+    <div id="auth-screen" class="screen landing">
+      <nav class="landing-nav">
+        <div class="landing-logo">Steve's App</div>
+        <a href="https://github.com/steveseguin/stevesapp" target="_blank" style="color: #a0a0c0; text-decoration: none;">GitHub</a>
+      </nav>
 
-    <div class="hero">
-      <h1>Run <span>Claude Code</span> Remotely From Your Browser</h1>
-      <p class="tagline">
-        Monitor your AI coding sessions from your phone. Access Claude Code, Codex, OpenCode,
-        or any terminal app via P2P - no VPN, no VPS, no special apps, no accounts.
-        Just open a browser and connect.
-      </p>
-      <div class="badges">
-        <span class="badge">No VPN Needed</span>
-        <span class="badge">No Accounts</span>
-        <span class="badge">Free Forever</span>
-        <span class="badge">MIT License</span>
-      </div>
-      <div class="cta-buttons">
-        <a href="#connect" class="btn btn-primary">Connect Now</a>
-        <a href="https://github.com/steveseguin/stevesapp" class="btn btn-github">View on GitHub</a>
-      </div>
-    </div>
-
-    <div class="features">
-      <div class="feature-card">
-        <h3>The Problem</h3>
-        <p>You're running Claude Code on your PC or VPS. You want to check on it from your phone. Current solutions require Tailscale, VPNs, SSH apps, accounts, and 30+ minutes of setup.</p>
-      </div>
-      <div class="feature-card">
-        <h3>The Solution</h3>
-        <p>Run one command, get a token, open your browser. That's it. P2P encrypted connection via WebRTC - works behind NAT, no port forwarding, no VPS needed.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Vibe Coder Friendly</h3>
-        <p>Watch AI code in real-time from your phone. Full terminal with colors, TUI support, interactive prompts. Perfect for monitoring long-running agentic sessions.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Truly Free</h3>
-        <p>MIT licensed, fully open source, no accounts, no subscriptions, no tracking. Self-host it, fork it, modify it - it's yours.</p>
-      </div>
-    </div>
-
-    <div class="usecases">
-      <h2>Built for Modern AI Development</h2>
-      <div class="usecase-grid">
-        <div class="usecase">
-          <div class="usecase-icon">🤖</div>
-          <div class="usecase-name">Claude Code</div>
-          <div class="usecase-desc">Watch agentic coding in action</div>
-        </div>
-        <div class="usecase">
-          <div class="usecase-icon">🧠</div>
-          <div class="usecase-name">GPT Codex</div>
-          <div class="usecase-desc">Monitor code generation</div>
-        </div>
-        <div class="usecase">
-          <div class="usecase-icon">💻</div>
-          <div class="usecase-name">OpenCode</div>
-          <div class="usecase-desc">Track AI pair programming</div>
-        </div>
-        <div class="usecase">
-          <div class="usecase-icon">🔧</div>
-          <div class="usecase-name">Any Terminal</div>
-          <div class="usecase-desc">Bash, Zsh, SSH, and more</div>
+      <div class="landing-hero">
+        <h1>Run <span>Claude Code</span> Remotely From Your Browser</h1>
+        <p class="tagline">
+          Monitor your AI coding sessions from your phone. Access Claude Code, Codex, OpenCode,
+          or any terminal app remotely via P2P - no VPN, no VPS, no special apps, no accounts.
+          Just open a browser and connect.
+        </p>
+        <div class="landing-badges">
+          <span class="badge">No VPN Needed</span>
+          <span class="badge">No Accounts</span>
+          <span class="badge">Free &amp; Open Source</span>
+          <span class="badge">MIT License</span>
         </div>
       </div>
-    </div>
 
-    <div class="install">
-      <h2>Get Started in 60 Seconds</h2>
-      <div class="code-block">
-        <div class="code-comment"># On Linux, macOS, or WSL (Windows users: run in WSL terminal)</div>
-        <div class="code-cmd">git clone https://github.com/steveseguin/stevesapp</div>
-        <div class="code-cmd">cd stevesapp && npm install && npm start</div>
-        <div class="code-output">
-          Steve's App running on http://0.0.0.0:3000<br>
-          API Token: abc123xyz...
+      <div class="landing-features">
+        <div class="feature-card">
+          <h3>The Problem</h3>
+          <p>You're running Claude Code on your PC or VPS. You want to check on it from your phone. Current solutions require Tailscale, VPNs, SSH apps, accounts, and 30+ minutes of setup.</p>
+        </div>
+        <div class="feature-card">
+          <h3>The Solution</h3>
+          <p>Run one command, get a token, open your browser. That's it. P2P encrypted connection via WebRTC - works behind NAT, no port forwarding, no VPS needed.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Vibe Coder Friendly</h3>
+          <p>Watch AI code in real-time from your phone. Full terminal with colors, TUI support, interactive prompts. Perfect for monitoring long-running agentic sessions.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Truly Free</h3>
+          <p>MIT licensed, fully open source, no accounts, no subscriptions, no tracking. Self-host it, fork it, modify it - it's yours.</p>
         </div>
       </div>
-      <p class="install-note">
-        Then come back here and enter your token below to connect.
-        <br><span style="color: #666; font-size: 0.85rem;">Windows users: requires <a href="https://learn.microsoft.com/en-us/windows/wsl/install" style="color: #4ecca3;">WSL</a> for terminal emulation.</span>
-      </p>
+
+      <div class="landing-usecases">
+        <h2>Built for Modern AI Development</h2>
+        <div class="usecase-grid">
+          <div class="usecase">
+            <div class="usecase-icon">🤖</div>
+            <div class="usecase-name">Claude Code</div>
+            <div class="usecase-desc">Watch agentic coding in action</div>
+          </div>
+          <div class="usecase">
+            <div class="usecase-icon">🧠</div>
+            <div class="usecase-name">GPT Codex</div>
+            <div class="usecase-desc">Monitor code generation</div>
+          </div>
+          <div class="usecase">
+            <div class="usecase-icon">💻</div>
+            <div class="usecase-name">OpenCode</div>
+            <div class="usecase-desc">Track AI pair programming</div>
+          </div>
+          <div class="usecase">
+            <div class="usecase-icon">🔧</div>
+            <div class="usecase-name">Any Terminal</div>
+            <div class="usecase-desc">CMD, PowerShell, WSL, SSH</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-howto" style="max-width: 700px; margin: 0 auto; padding: 40px 20px; text-align: left;">
+        <h2 style="text-align: center; margin-bottom: 30px;">Get Started in 60 Seconds</h2>
+        <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; font-family: monospace; font-size: 0.9rem; margin-bottom: 20px;">
+          <div style="color: #a0a0c0; margin-bottom: 8px;"># Clone and run</div>
+          <div style="color: #4ecca3;">git clone https://github.com/steveseguin/stevesapp</div>
+          <div style="color: #4ecca3;">cd stevesapp && npm install && npm start</div>
+        </div>
+        <p style="color: #a0a0c0; text-align: center; margin-bottom: 10px;">
+          The server displays your token on startup. Enter it below to connect, or scan the QR code on your phone.
+        </p>
+      </div>
+
+      <div class="landing-login">
+        <h2>Connect to Your Terminal</h2>
+        <p class="subtitle">Enter the token from your server</p>
+        <div class="login-box">
+          <input type="password" id="token-input" placeholder="Enter API Token" autofocus>
+          <button id="connect-btn">Connect</button>
+          <p id="auth-error" class="error"></p>
+          <div class="qr-section">
+            <button id="show-qr-btn" class="qr-toggle" title="Show QR Code for phone">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-5 0h2v3h-2v-3zm2 3h3v2h-3v-2zm3 2h2v3h-2v-3zm-5 0h2v3h-2v-3zm2 3h3v2h-3v-2z"/>
+              </svg>
+              <span>QR Code</span>
+            </button>
+          </div>
+        </div>
+        <div id="qr-modal" class="qr-modal hidden">
+          <div class="qr-modal-content">
+            <button id="close-qr-btn" class="qr-close">&times;</button>
+            <h3>Scan to Connect</h3>
+            <p class="qr-subtitle">Scan to open remote terminal</p>
+            <div id="qr-code"></div>
+            <p class="qr-url" id="qr-url-display"></p>
+          </div>
+        </div>
+        <p class="cta-phone">
+          On mobile? Use <a href="/remote.html">the remote interface</a> for a touch-optimized experience.
+        </p>
+      </div>
+
+      <footer class="landing-footer">
+        <p>Open source under MIT license. <a href="https://github.com/steveseguin/stevesapp">View on GitHub</a></p>
+      </footer>
     </div>
 
-    <div id="connect" class="connect-section">
-      <div class="connect-box">
-        <h3>Connect to Your Server</h3>
-        <p class="subtitle">Enter the API token from your terminal</p>
-        <form id="connect-form">
-          <input type="password" id="token-input" placeholder="API Token" autocomplete="current-password">
-          <button type="submit" id="connect-btn">Connect via P2P</button>
-        </form>
-        <p id="connect-status" class="connect-status"></p>
+    <!-- Main Screen -->
+    <div id="main-screen" class="screen hidden">
+      <!-- Sidebar -->
+      <div id="sidebar">
+        <div class="sidebar-header">
+          <h2>Sessions</h2>
+          <button id="toggle-sidebar" class="icon-btn">☰</button>
+        </div>
+
+        <div class="session-list" id="session-list">
+          <!-- Sessions populated dynamically -->
+        </div>
+
+        <div class="sidebar-actions">
+          <div class="new-session">
+            <select id="shell-select">
+              <option value="bash">bash</option>
+              <option value="zsh">zsh</option>
+              <option value="sh">sh</option>
+              <option value="custom">Custom...</option>
+            </select>
+            <button id="new-session-btn">+ New</button>
+          </div>
+
+          <div class="windows-section">
+            <button id="refresh-windows-btn">Scan Windows</button>
+            <div id="windows-list" class="windows-list">
+              <!-- Windows populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div id="terminal-container">
+        <div id="terminal-header">
+          <button id="floating-toggle">☰</button>
+          <span id="session-info">No session selected</span>
+          <button id="disconnect-btn" class="hidden">Disconnect</button>
+          <div id="p2p-controls">
+            <button id="p2p-toggle">Share P2P</button>
+            <span id="p2p-status" class="hidden"></span>
+          </div>
+        </div>
+        <div id="terminal"></div>
       </div>
     </div>
-
-    <div class="comparison">
-      <h2>Why Steve's App?</h2>
-      <table>
-        <tr>
-          <th>Feature</th>
-          <th>Tailscale + SSH</th>
-          <th>Steve's App</th>
-        </tr>
-        <tr>
-          <td>VPN Required</td>
-          <td class="cross">Yes</td>
-          <td class="check">No</td>
-        </tr>
-        <tr>
-          <td>Account Required</td>
-          <td class="cross">Yes (Tailscale)</td>
-          <td class="check">No</td>
-        </tr>
-        <tr>
-          <td>Mobile App Install</td>
-          <td class="cross">Yes (SSH app)</td>
-          <td class="check">No (just browser)</td>
-        </tr>
-        <tr>
-          <td>Works Behind NAT</td>
-          <td>With Tailscale</td>
-          <td class="check">Yes (P2P)</td>
-        </tr>
-        <tr>
-          <td>Setup Time</td>
-          <td>15-30 min</td>
-          <td class="check">60 seconds</td>
-        </tr>
-        <tr>
-          <td>Cost</td>
-          <td>Free tier limits</td>
-          <td class="check">Free forever</td>
-        </tr>
-        <tr>
-          <td>Open Source</td>
-          <td>Partially</td>
-          <td class="check">Fully (MIT)</td>
-        </tr>
-      </table>
-    </div>
-
-    <footer>
-      <p>
-        MIT License &bull;
-        <a href="https://github.com/steveseguin/stevesapp">GitHub</a> &bull;
-        Built for the AI coding assistant era
-      </p>
-    </footer>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="app.js"></script>
   <script>
+    // QR Code functionality
     document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('connect-form');
+      const showQrBtn = document.getElementById('show-qr-btn');
+      const closeQrBtn = document.getElementById('close-qr-btn');
+      const qrModal = document.getElementById('qr-modal');
+      const qrCodeEl = document.getElementById('qr-code');
+      const qrUrlDisplay = document.getElementById('qr-url-display');
       const tokenInput = document.getElementById('token-input');
-      const status = document.getElementById('connect-status');
 
-      // Load saved token
-      const savedToken = localStorage.getItem('steves-app-token');
-      if (savedToken) {
-        tokenInput.value = savedToken;
-      }
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
+      function generateQR() {
         const token = tokenInput.value.trim();
-
         if (!token) {
-          status.textContent = 'Please enter a token';
-          status.className = 'connect-status error';
+          alert('Please enter a token first');
           return;
         }
 
-        // Save token and redirect to remote.html
-        localStorage.setItem('steves-app-token', token);
-        window.location.href = `remote.html?token=${encodeURIComponent(token)}`;
+        // Build phone URL with token
+        const baseUrl = window.location.origin;
+        const phoneUrl = `${baseUrl}/remote.html?token=${encodeURIComponent(token)}`;
+
+        // Clear previous QR
+        qrCodeEl.innerHTML = '';
+
+        // Generate QR code
+        QRCode.toCanvas(phoneUrl, {
+          width: 200,
+          margin: 0,
+          color: { dark: '#1a1a2e', light: '#ffffff' }
+        }, (err, canvas) => {
+          if (err) {
+            console.error('QR generation error:', err);
+            return;
+          }
+          qrCodeEl.appendChild(canvas);
+        });
+
+        qrUrlDisplay.textContent = phoneUrl;
+        qrModal.classList.remove('hidden');
+      }
+
+      showQrBtn.addEventListener('click', generateQR);
+      closeQrBtn.addEventListener('click', () => qrModal.classList.add('hidden'));
+      qrModal.addEventListener('click', (e) => {
+        if (e.target === qrModal) qrModal.classList.add('hidden');
       });
     });
   </script>

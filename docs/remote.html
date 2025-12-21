@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>Steve's App - Remote Terminal</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
   <style>
@@ -266,6 +266,7 @@
         this.sessionBuffers = {}; // Store buffer per session
         this.sessionActivity = {}; // Track last activity per session
         this.sessionHasPty = {}; // Track PTY status per session
+        this.activePeerUuid = null;
 
         this.connectScreen = document.getElementById('connect-screen');
         this.terminalScreen = document.getElementById('terminal-screen');
@@ -413,6 +414,15 @@
 
           this.vdo.addEventListener('dataReceived', (e) => {
             const msg = e.detail.data;
+            const uuid = e.detail.uuid;
+            if (uuid) {
+              if (!this.activePeerUuid) {
+                this.activePeerUuid = uuid;
+              } else if (this.activePeerUuid !== uuid) {
+                this.log('Ignoring data from extra peer:', uuid);
+                return;
+              }
+            }
             this.log('Received:', msg);
 
             if (msg.type === 'output') {
@@ -481,19 +491,37 @@
           });
 
           this.vdo.addEventListener('peerConnected', (e) => {
-            this.log('Connected to host (peer)');
+            const uuid = e.detail?.uuid;
+            if (uuid && !this.activePeerUuid) {
+              this.activePeerUuid = uuid;
+            }
+            this.log('Connected to host (peer)', uuid || '');
             this.sessionInfo.textContent = 'Peer connected - waiting for data channel...';
           });
 
           this.vdo.addEventListener('peerDisconnected', (e) => {
-            this.log('Host disconnected');
+            const uuid = e.detail?.uuid;
+            this.log('Host disconnected', uuid || '');
+            if (uuid && uuid === this.activePeerUuid) {
+              this.activePeerUuid = null;
+              this.dataChannelReady = false;
+            }
             this.sessionInfo.textContent = 'Host disconnected';
           });
 
           // Wait for data channel to be ready
           this.dataChannelReady = false;
           this.vdo.addEventListener('dataChannelOpen', (e) => {
-            this.log('Data channel open!');
+            const uuid = e.detail?.uuid;
+            if (uuid) {
+              if (!this.activePeerUuid) {
+                this.activePeerUuid = uuid;
+              } else if (this.activePeerUuid !== uuid) {
+                this.log('Ignoring data channel from extra peer:', uuid);
+                return;
+              }
+            }
+            this.log('Data channel open!', uuid || '');
             this.dataChannelReady = true;
             this.sessionInfo.textContent = 'Connected - waiting for sessions...';
             this.sendData({ type: 'getSessions' });
@@ -700,7 +728,8 @@
       sendData(data) {
         if (this.vdo && this.connected && this.dataChannelReady) {
           this.log('sendData:', data.type, data.type === 'upload' ? `(${data.filename})` : '');
-          this.vdo.sendData(data);
+          const target = this.activePeerUuid ? { uuid: this.activePeerUuid } : null;
+          this.vdo.sendData(data, target || undefined);
         } else {
           this.log('Cannot send - channel not ready, connected:', this.connected, 'dataChannelReady:', this.dataChannelReady);
         }
@@ -928,6 +957,7 @@
         this.connected = false;
         this.connecting = false;
         this.attachedSessionId = null;
+        this.activePeerUuid = null;
         if (this.term) {
           this.term.dispose();
           this.term = null;
