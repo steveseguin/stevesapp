@@ -4,12 +4,22 @@ const { v4: uuidv4 } = require('uuid');
 
 // Try to load node-pty for proper PTY support
 let pty = null;
+let ptyWorks = false;
 try {
   pty = require('node-pty');
+  // Test if it actually works (native module built correctly)
+  const testPty = pty.spawn(process.platform === 'win32' ? 'cmd.exe' : 'sh', [], {
+    cols: 80,
+    rows: 24,
+    cwd: process.env.HOME || process.env.USERPROFILE
+  });
+  testPty.kill();
+  ptyWorks = true;
   console.log('node-pty loaded - full PTY support enabled');
 } catch (e) {
-  console.log('node-pty not available - using child_process fallback (no arrow key/history support)');
-  console.log('node-pty error:', e.message);
+  pty = null;
+  console.log('node-pty not available - using child_process fallback');
+  console.log('  (For full PTY support: npm install --global windows-build-tools && npm rebuild node-pty)');
 }
 
 /**
@@ -22,7 +32,9 @@ class NativeSession extends EventEmitter {
 
     this.id = uuidv4();
     this.type = 'native';
-    this.shell = options.shell || 'cmd.exe';
+    // Default to bash on Linux/WSL, cmd.exe on Windows
+    const defaultShell = process.platform === 'win32' ? 'cmd.exe' : 'bash';
+    this.shell = options.shell || defaultShell;
     this.cols = options.cols || 120;
     this.rows = options.rows || 30;
     this.clients = new Set();
@@ -308,7 +320,13 @@ class NativeSession extends EventEmitter {
 
   writeToProcess(data) {
     if (this.process && this.process.stdin && this.process.stdin.writable) {
-      const normalized = data.replace(/\r(?!\n)/g, '\r\n');
+      let normalized;
+      // WSL/Unix shells expect \n, Windows shells expect \r\n
+      if (this.shell === 'wsl' || this.shell === 'wsl.exe' || this.shell.startsWith('ssh ')) {
+        normalized = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      } else {
+        normalized = data.replace(/\r(?!\n)/g, '\r\n');
+      }
       console.log('Writing to shell:', JSON.stringify(normalized));
       this.process.stdin.write(normalized);
     } else {

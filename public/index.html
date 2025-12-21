@@ -7,8 +7,18 @@
   <title>Steve's App - Remote Terminal Access for AI Coding Assistants</title>
   <meta name="description" content="Access your Windows terminal from anywhere. Perfect for Claude Code, GPT Codex, and OpenCode users. No VPN, no accounts, just P2P.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
-  <link rel="stylesheet" href="style.css">
   <style>
+    /* Global resets */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #1a1a2e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #app { height: 100%; }
+    .screen { width: 100%; height: 100%; }
+    .hidden { display: none !important; }
+
     /* Landing page styles */
     .landing {
       min-height: 100vh;
@@ -274,6 +284,129 @@
       color: #666;
       word-break: break-all;
     }
+
+    /* Main App Styles */
+    #main-screen { display: flex; height: 100%; background: #1a1a2e; }
+
+    #sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: #16213e;
+      border-right: 1px solid #2a2a4e;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar.collapsed { display: none; }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid #2a2a4e;
+    }
+    .sidebar-header h2 { font-size: 1.2rem; font-weight: 500; color: #eaeaea; }
+    .icon-btn {
+      background: none;
+      border: none;
+      color: #eaeaea;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .session-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .session-item {
+      padding: 12px;
+      margin-bottom: 4px;
+      background: #0f3460;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #eaeaea;
+    }
+    .session-item:hover, .session-item.active { background: #e94560; }
+    .session-item .type { font-size: 0.75rem; color: #a0a0a0; text-transform: uppercase; }
+    .session-item .name { font-size: 0.9rem; margin-top: 2px; }
+    .session-item .actions { margin-top: 8px; display: flex; gap: 8px; }
+    .session-item .actions button {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .sidebar-actions { padding: 1rem; border-top: 1px solid #2a2a4e; }
+    .new-session { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .new-session select {
+      flex: 1;
+      padding: 8px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4e;
+      border-radius: 4px;
+      color: #eaeaea;
+    }
+    .new-session button, .windows-section button {
+      padding: 8px 12px;
+      background: #4ecca3;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    .windows-section { margin-top: 1rem; }
+    .windows-section button { width: 100%; margin-bottom: 0.5rem; }
+    .windows-list { max-height: 200px; overflow-y: auto; }
+    .window-item {
+      padding: 8px;
+      margin-bottom: 4px;
+      background: #1a1a2e;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: #eaeaea;
+    }
+
+    #terminal-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: #1a1a2e;
+    }
+    #terminal-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: #16213e;
+      border-bottom: 1px solid #2a2a4e;
+      gap: 12px;
+    }
+    #session-info { font-size: 0.9rem; color: #a0a0a0; }
+    #disconnect-btn, #p2p-toggle {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    #disconnect-btn { background: #e94560; }
+    #p2p-toggle { background: #4ecca3; }
+    #p2p-toggle.active { background: #e94560; }
+    #p2p-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    #p2p-status { font-size: 0.8rem; color: #4ecca3; }
+    #floating-toggle {
+      background: #0f3460;
+      border: 1px solid #2a2a4e;
+      border-radius: 4px;
+      padding: 6px 10px;
+      color: #eaeaea;
+      cursor: pointer;
+    }
+    #terminal { flex: 1; background: #000; padding: 4px; }
   </style>
 </head>
 <body>
@@ -407,9 +540,9 @@
         <div class="sidebar-actions">
           <div class="new-session">
             <select id="shell-select">
-              <option value="cmd.exe">cmd.exe</option>
-              <option value="powershell.exe">PowerShell</option>
-              <option value="wsl.exe">WSL</option>
+              <option value="bash">bash</option>
+              <option value="zsh">zsh</option>
+              <option value="sh">sh</option>
               <option value="custom">Custom...</option>
             </select>
             <button id="new-session-btn">+ New</button>
