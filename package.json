@@ -1,7 +1,8 @@
 {
-  "name": "terminal-hub",
+  "name": "steves-app",
   "version": "1.0.0",
-  "description": "Remote terminal multiplexer with window capture support",
+  "description": "Browser-based P2P terminal access - no VPN, no accounts, just open a browser",
+  "license": "MIT",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

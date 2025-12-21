@@ -29,7 +29,7 @@ class VdoBridge {
     const envPassword = process.env.VDO_PASSWORD ?? process.env.VDON_PASSWORD;
     const envStream = process.env.VDO_STREAM_ID || process.env.VDON_STREAM_ID;
 
-    this.room = options.room || envRoom || 'terminal-hub';
+    this.room = options.room || envRoom || 'steves-app';
     this.password = options.password ?? envPassword ?? process.env.API_TOKEN ?? false;
     this.streamId = options.streamId || envStream || 'server';
     this.debug = options.debug ?? process.env.VDO_DEBUG === 'true';

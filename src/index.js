@@ -8,7 +8,7 @@ const { server, sessionManager } = createServer();
 let vdoBridge = null;
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Terminal Hub running on http://0.0.0.0:${PORT}`);
+  console.log(`Steve's App running on http://0.0.0.0:${PORT}`);
   console.log(`Local access: http://localhost:${PORT}`);
   console.log(`Phone access: Open phone.html on mobile`);
 });

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>Terminal Hub - Remote Terminal Access for AI Coding Assistants</title>
+  <title>Steve's App - Remote Terminal Access for AI Coding Assistants</title>
   <meta name="description" content="Access your Windows terminal from anywhere. Perfect for Claude Code, GPT Codex, and OpenCode users. No VPN, no accounts, just P2P.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
   <link rel="stylesheet" href="style.css">
@@ -281,7 +281,7 @@
     <!-- Landing / Auth Screen -->
     <div id="auth-screen" class="screen landing">
       <nav class="landing-nav">
-        <div class="landing-logo">Terminal Hub</div>
+        <div class="landing-logo">Steve's App</div>
         <a href="https://github.com/steveseguin/stevesapp" target="_blank" style="color: #a0a0c0; text-decoration: none;">GitHub</a>
       </nav>
 
@@ -347,11 +347,9 @@
       <div class="landing-howto" style="max-width: 700px; margin: 0 auto; padding: 40px 20px; text-align: left;">
         <h2 style="text-align: center; margin-bottom: 30px;">Get Started in 60 Seconds</h2>
         <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; font-family: monospace; font-size: 0.9rem; margin-bottom: 20px;">
-          <div style="color: #a0a0c0; margin-bottom: 8px;"># Install and run</div>
-          <div style="color: #4ecca3;">npx terminal-hub</div>
-          <div style="color: #a0a0c0; margin-top: 16px; margin-bottom: 8px;"># Or clone and run</div>
+          <div style="color: #a0a0c0; margin-bottom: 8px;"># Clone and run</div>
           <div style="color: #4ecca3;">git clone https://github.com/steveseguin/stevesapp</div>
-          <div style="color: #4ecca3;">cd terminal-hub && npm install && npm start</div>
+          <div style="color: #4ecca3;">cd stevesapp && npm install && npm start</div>
         </div>
         <p style="color: #a0a0c0; text-align: center; margin-bottom: 10px;">
           The server displays your token on startup. Enter it below to connect, or scan the QR code on your phone.
@@ -360,7 +358,7 @@
 
       <div class="landing-login">
         <h2>Connect to Your Terminal</h2>
-        <p class="subtitle">Enter the token from your Terminal Hub server</p>
+        <p class="subtitle">Enter the token from your server</p>
         <div class="login-box">
           <input type="password" id="token-input" placeholder="Enter API Token" autofocus>
           <button id="connect-btn">Connect</button>

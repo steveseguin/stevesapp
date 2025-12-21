@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>Terminal Hub - Phone</title>
+  <title>Steve's App - Phone</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -172,7 +172,7 @@
 </head>
 <body>
   <div id="connect-screen">
-    <h1>Terminal Hub</h1>
+    <h1>Steve's App</h1>
     <form id="connect-form" autocomplete="on">
       <input type="password" id="password-input" placeholder="API Token" autocomplete="current-password">
       <button type="submit" id="connect-btn">Connect</button>
@@ -241,8 +241,8 @@
 
         // Check URL params or localStorage
         const params = new URLSearchParams(window.location.search);
-        const savedToken = localStorage.getItem('terminal-hub-token');
-        this.room = params.get('room') || 'terminal-hub';
+        const savedToken = localStorage.getItem('steves-app-token');
+        this.room = params.get('room') || 'steves-app';
         this.targetStreamId = params.get('stream') || 'host';
         if (params.get('token')) this.passwordInput.value = params.get('token');
         else if (savedToken) this.passwordInput.value = savedToken;
@@ -344,7 +344,7 @@
         }
 
         // Save token for convenience
-        localStorage.setItem('terminal-hub-token', password);
+        localStorage.setItem('steves-app-token', password);
 
         this.status.textContent = 'Connecting...';
 

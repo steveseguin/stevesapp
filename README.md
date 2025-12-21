@@ -1,4 +1,4 @@
-# Terminal Hub
+# Steve's App
 
 **Monitor your AI coding sessions from your phone. No VPN. No accounts. Just open a browser.**
 
@@ -17,19 +17,19 @@ It works, but it's a lot of setup for "I just want to see what Claude is doing."
 
 ## The Solution
 
-Terminal Hub gives you browser-based terminal access with **zero configuration**:
+Steve's App gives you browser-based terminal access with **zero configuration**:
 
 ```bash
-npx terminal-hub
-# or: git clone ... && npm install && npm start
+git clone https://github.com/steveseguin/stevesapp
+cd stevesapp && npm install && npm start
 ```
 
 That's it. Open the URL on your phone, enter the token shown in the console, and you're connected.
 
-### Why Terminal Hub?
+### Why Steve's App?
 
-| Feature | Tailscale + SSH App | Terminal Hub |
-|---------|-------------------|--------------|
+| Feature | Tailscale + SSH App | Steve's App |
+|---------|---------------------|-------------|
 | VPN required | Yes | No |
 | Account required | Yes (Tailscale) | No |
 | Mobile app install | Yes | No (just browser) |
@@ -48,27 +48,20 @@ That's it. Open the URL on your phone, enter the token shown in the console, and
 
 ## Features
 
-- **P2P Connection**: Direct encrypted WebRTC, no relay servers storing your data
+- **P2P Connection**: Direct encrypted WebRTC via [VDO.Ninja](https://vdo.ninja), no relay servers storing your data
 - **Mobile-Optimized UI**: Touch-friendly keyboard with Ctrl+C, arrows, Tab, etc.
 - **Image Upload**: Send screenshots from phone to terminal (for AI context)
 - **QR Code Login**: Scan from desktop to instantly connect your phone
 - **Multiple Sessions**: CMD, PowerShell, WSL, SSH - switch between them
 - **Multiplexing**: Multiple devices can view/control the same session
+- **ANSI Color Support**: Full 16-color palette for colorful CLI output
 - **Works on Windows**: Native support, no WSL required
 
 ## Quick Start
 
-### Option 1: npx (Easiest)
-
-```bash
-npx terminal-hub
-```
-
-### Option 2: Clone and Run
-
 ```bash
 git clone https://github.com/steveseguin/stevesapp
-cd terminal-hub
+cd stevesapp
 npm install
 npm start
 ```
@@ -100,16 +93,16 @@ SCROLLBACK=10000                       # Terminal scrollback buffer size
 
 ## P2P Mode (No Browser Required on Desktop)
 
-By default, Terminal Hub requires a browser open on your desktop to relay P2P connections. For headless/VPS use, install a WebRTC implementation:
+By default, Steve's App requires a browser open on your desktop to relay P2P connections. For headless/VPS use, install a WebRTC implementation:
 
 ```bash
-npm install @anthropic-ai/wrtc   # or: npm install node-datachannel
+npm install @roamhq/wrtc   # or: npm install node-datachannel
 ```
 
 Then the server acts as the P2P relay directly. Configure with:
 
 ```
-VDO_ROOM=terminal-hub
+VDO_ROOM=steves-app
 VDO_PASSWORD=your-token
 VDO_STREAM_ID=server
 ```
@@ -129,35 +122,37 @@ For remote access without a VPN, you can:
 
 ## How It Works
 
+Steve's App uses [VDO.Ninja](https://vdo.ninja) for P2P WebRTC connectivity:
+
 ```
-┌──────────────────────────────────────────────────────┐
-│                    Your Phone                         │
-│  ┌─────────────────────────────────────────────────┐ │
-│  │  phone.html (mobile-optimized terminal UI)      │ │
-│  │  - Virtual keyboard with special keys           │ │
-│  │  - Image upload                                  │ │
-│  │  - Session switching                             │ │
-│  └─────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-                          │
-                          │ WebRTC P2P (encrypted)
-                          │ or WebSocket (local)
-                          ▼
-┌──────────────────────────────────────────────────────┐
-│                  Terminal Hub Server                  │
-│  ┌─────────────────────────────────────────────────┐ │
-│  │  Session Manager                                 │ │
-│  │  - Spawns shells (cmd, powershell, wsl, ssh)   │ │
-│  │  - Manages terminal I/O                         │ │
-│  │  - Handles file uploads                         │ │
-│  └─────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────┐
-│  Claude Code / Codex / OpenCode / Any Terminal       │
-│  Running your AI coding assistant                     │
-└──────────────────────────────────────────────────────┘
++------------------------------------------------------+
+|                    Your Phone                         |
+|  +--------------------------------------------------+ |
+|  |  phone.html (mobile-optimized terminal UI)       | |
+|  |  - Virtual keyboard with special keys            | |
+|  |  - Image upload                                  | |
+|  |  - Session switching                             | |
+|  +--------------------------------------------------+ |
++------------------------------------------------------+
+                          |
+                          | WebRTC P2P (encrypted)
+                          | via VDO.Ninja
+                          v
++------------------------------------------------------+
+|                  Steve's App Server                   |
+|  +--------------------------------------------------+ |
+|  |  Session Manager                                 | |
+|  |  - Spawns shells (cmd, powershell, wsl, ssh)    | |
+|  |  - Manages terminal I/O                          | |
+|  |  - Handles file uploads                          | |
+|  +--------------------------------------------------+ |
++------------------------------------------------------+
+                          |
+                          v
++------------------------------------------------------+
+|  Claude Code / Codex / OpenCode / Any Terminal       |
+|  Running your AI coding assistant                    |
++------------------------------------------------------+
 ```
 
 ## API Reference
@@ -189,7 +184,7 @@ Connect to `ws://host:port?token=<token>`
 
 ### "node-pty not found" warning
 
-This is normal. Without node-pty, Terminal Hub falls back to a basic mode that works fine for most use cases. To enable full PTY support:
+This is normal. Without node-pty, Steve's App falls back to a basic mode that works fine for most use cases. To enable full PTY support:
 
 ```bash
 npm install -g windows-build-tools  # Run as admin
@@ -208,10 +203,20 @@ This usually means the P2P connection is unstable. Try:
 - Ensuring both devices have good internet
 - Using WebSocket mode (same network) instead of P2P
 
+### Colors not showing
+
+Install node-pty for full color support:
+```bash
+npm install node-pty
+```
+
+Without PTY, some programs may not output ANSI colors, but Node.js-based tools like Claude Code should work via the FORCE_COLOR environment variable.
+
 ## Contributing
 
-PRs welcome! This is a community project. Ideas for improvements:
+PRs welcome! This project uses the [VDO.Ninja SDK](https://sdk.vdo.ninja) for P2P connectivity.
 
+Ideas for improvements:
 - Linux/Mac support
 - More shell integrations
 - Terminal themes

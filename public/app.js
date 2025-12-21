@@ -1,10 +1,10 @@
 /**
- * Terminal Hub Client
+ * Steve's App Client
  */
 
 class TerminalHub {
   constructor() {
-    this.token = localStorage.getItem('terminal-hub-token') || '';
+    this.token = localStorage.getItem('steves-app-token') || '';
     this.ws = null;
     this.term = null;
     this.fitAddon = null;
@@ -131,7 +131,7 @@ class TerminalHub {
     }
 
     this.authError.textContent = '';
-    localStorage.setItem('terminal-hub-token', this.token);
+    localStorage.setItem('steves-app-token', this.token);
     this.connect();
   }
 
@@ -142,7 +142,7 @@ class TerminalHub {
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-      console.log('Connected to Terminal Hub');
+      console.log('Connected to server');
       this.reconnectAttempts = 0;
       this.showMainScreen();
       this.initTerminal();
@@ -159,7 +159,7 @@ class TerminalHub {
         // Auth failed
         this.authError.textContent = 'Invalid token';
         this.showAuthScreen();
-        localStorage.removeItem('terminal-hub-token');
+        localStorage.removeItem('steves-app-token');
         return;
       }
 
@@ -441,7 +441,7 @@ class TerminalHub {
     });
 
     // Initial welcome
-    this.term.writeln('Terminal Hub - Select or create a session');
+    this.term.writeln('Steve\'s App - Select or create a session');
     this.term.writeln('');
 
     // Focus the terminal
@@ -1065,7 +1065,7 @@ class TerminalHub {
   async startP2P() {
     try {
       // Fixed room name - password differentiates users
-      const roomId = 'terminal-hub';
+      const roomId = 'steves-app';
 
       this.vdo = new VDONinjaSDK();
 
