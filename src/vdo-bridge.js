@@ -28,10 +28,12 @@ class VdoBridge {
     const envRoom = process.env.VDO_ROOM || process.env.VDON_ROOM;
     const envPassword = process.env.VDO_PASSWORD ?? process.env.VDON_PASSWORD;
     const envStream = process.env.VDO_STREAM_ID || process.env.VDON_STREAM_ID;
+    const envSalt = process.env.VDO_SALT || process.env.VDON_SALT;
 
     this.room = options.room || envRoom || 'steves-app';
     this.password = options.password ?? envPassword ?? process.env.API_TOKEN ?? false;
     this.streamId = options.streamId || envStream || 'server';
+    this.salt = options.salt || envSalt || 'steves.app';
     this.debug = options.debug ?? process.env.VDO_DEBUG === 'true';
     this.sdk = null;
     this.peers = new Map();
@@ -59,6 +61,7 @@ class VdoBridge {
     this.sdk = new SDK({
       room: this.room,
       password: this.password,
+      salt: this.salt,
       debug: this.debug
     });
 

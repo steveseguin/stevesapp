@@ -285,6 +285,7 @@
         this.debug = params.get('debug') === '1';
         this.room = params.get('room') || 'steves-app';
         this.targetStreamId = params.get('stream') || 'server';
+        this.salt = params.get('salt') || 'steves.app';
         if (params.get('token')) this.passwordInput.value = params.get('token');
         else if (savedToken) this.passwordInput.value = savedToken;
 
@@ -408,7 +409,7 @@
         this.status.textContent = 'Connecting...';
 
         try {
-          this.vdo = new VDONinjaSDK();
+          this.vdo = new VDONinjaSDK({ salt: this.salt });
 
           this.vdo.addEventListener('dataReceived', (e) => {
             const msg = e.detail.data;

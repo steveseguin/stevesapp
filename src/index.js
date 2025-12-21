@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const readline = require('readline');
 const EventEmitter = require('events');
 const SessionManager = require('./sessions/manager');
+const { SessionLogger } = require('./session-logger');
 const { createServer } = require('./server');
 const { VdoBridge } = require('./vdo-bridge');
 
@@ -20,6 +21,7 @@ class P2PManager extends EventEmitter {
     this.room = config.room;
     this.password = config.password;
     this.streamId = config.streamId;
+    this.salt = config.salt;
     this.debug = config.debug;
     this.enabled = false;
     this.active = false;
@@ -36,6 +38,7 @@ class P2PManager extends EventEmitter {
       available: this.available,
       room: this.room,
       streamId: this.streamId,
+      salt: this.salt,
       error: this.lastError
     };
   }
@@ -46,6 +49,7 @@ class P2PManager extends EventEmitter {
       room: this.room,
       password: this.password,
       streamId: this.streamId,
+      salt: this.salt,
       debug: this.debug
     });
     const started = await this.bridge.start();
@@ -167,10 +171,18 @@ const p2pConfig = {
   room: process.env.VDO_ROOM || 'steves-app',
   password: process.env.VDO_PASSWORD || process.env.API_TOKEN,
   streamId: process.env.VDO_STREAM_ID || 'server',
+  salt: process.env.VDO_SALT || 'steves.app',
   debug: parseBool(process.env.VDO_DEBUG, false)
 };
 
-const sessionManager = new SessionManager();
+const sessionLogConfig = {
+  enabled: parseBool(process.env.SESSION_LOG_ENABLED, true),
+  dir: process.env.SESSION_LOG_DIR || 'session-logs',
+  keep: parseInt(process.env.SESSION_LOG_KEEP, 10) || 10
+};
+
+const sessionLogger = new SessionLogger(sessionLogConfig);
+const sessionManager = new SessionManager({ logger: sessionLogger });
 const p2pManager = new P2PManager(sessionManager, p2pConfig);
 const { server } = createServer({ sessionManager, p2pManager });
 
@@ -187,6 +199,9 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Remote access: http://localhost:${PORT}/remote.html`);
   console.log('');
   console.log(`API Token: ${process.env.API_TOKEN}`);
+  console.log('');
+  const logStatus = sessionLogger.getStatus();
+  console.log(`[SessionLog] ${logStatus.enabled ? 'enabled' : 'disabled'} - dir "${logStatus.dir}", keep ${logStatus.keep}`);
   console.log('');
   logP2PStatus(p2pManager.getStatus(), true);
   setupCliMenu(p2pManager);

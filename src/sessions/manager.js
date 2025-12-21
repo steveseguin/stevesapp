@@ -3,14 +3,18 @@ const NativeSession = require('./native');
 const CaptureSession = require('./capture');
 
 class SessionManager extends EventEmitter {
-  constructor() {
+  constructor(options = {}) {
     super();
     this.sessions = new Map();
+    this.logger = options.logger || null;
   }
 
   createNativeSession(options) {
     const session = new NativeSession(options);
     console.log('Created native session:', session.id);
+    if (this.logger) {
+      this.logger.attach(session);
+    }
 
     session.on('exit', (code) => {
       console.log('Native session exited:', session.id, 'code:', code);
@@ -25,6 +29,9 @@ class SessionManager extends EventEmitter {
 
   createCaptureSession(hwnd) {
     const session = new CaptureSession(hwnd);
+    if (this.logger) {
+      this.logger.attach(session);
+    }
 
     session.on('exit', () => {
       this.sessions.delete(session.id);
@@ -44,6 +51,10 @@ class SessionManager extends EventEmitter {
     const session = this.sessions.get(id);
     if (session) {
       session.destroy();
+      if (this.logger) {
+        this.logger.log(session.id, { type: 'destroy' });
+        this.logger.close(session.id);
+      }
       this.sessions.delete(id);
       this.emit('change');
       return true;

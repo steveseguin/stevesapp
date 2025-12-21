@@ -173,6 +173,11 @@ PORT=3000
 # Terminal scrollback buffer size
 SCROLLBACK=10000
 
+# Session I/O logging (enabled by default)
+SESSION_LOG_ENABLED=true
+SESSION_LOG_DIR=session-logs
+SESSION_LOG_KEEP=10
+
 # Default working directory for new shell sessions (fallback: HOME/USERPROFILE)
 # Example (WSL): /mnt/c/Users/steve
 DEFAULT_CWD=
@@ -182,6 +187,7 @@ P2P_ENABLED=true
 VDO_ROOM=steves-app
 VDO_PASSWORD=your-secure-random-token
 VDO_STREAM_ID=server
+VDO_SALT=steves.app
 VDO_DEBUG=false
 
 # Legacy alias (use P2P_ENABLED instead)
@@ -189,6 +195,12 @@ VDO_DEBUG=false
 ```
 
 If `API_TOKEN` is not set, a random token is generated each time the server starts.
+
+## Session Logs
+
+When `SESSION_LOG_ENABLED` is true, the server writes JSONL transcripts to `SESSION_LOG_DIR` (default: `session-logs/`).
+Each line is a JSON object with a timestamp, type (`start`, `input`, `output`, `exit`, `destroy`), and data.
+Only the most recent `SESSION_LOG_KEEP` session files are retained; older logs are removed automatically.
 
 ## P2P Remote Access
 
@@ -209,7 +221,10 @@ P2P_ENABLED=true           # Enable the server P2P relay (default: true)
 VDO_ROOM=steves-app          # Room name (default: steves-app)
 VDO_PASSWORD=your-token      # Room password (defaults to API_TOKEN)
 VDO_STREAM_ID=server         # Stream identifier
+VDO_SALT=steves.app          # Hash salt (use same value on server + remote)
 ```
+
+Keep `VDO_SALT` consistent between the server and `remote.html` (override with `?salt=` if needed).
 
 ### Runtime controls
 
