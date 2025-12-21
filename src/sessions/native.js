@@ -1,10 +1,12 @@
 const EventEmitter = require('events');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 
 // Try to load node-pty for proper PTY support
 let pty = null;
 let ptyWorks = false;
+const debug = process.env.SESSION_DEBUG === 'true' || process.env.DEBUG === 'true';
 try {
   pty = require('node-pty');
   // Test if it actually works (native module built correctly)
@@ -32,6 +34,18 @@ class NativeSession extends EventEmitter {
 
     this.id = uuidv4();
     this.type = 'native';
+    const fallbackCwd = process.env.USERPROFILE || process.env.HOME;
+    const requestedCwd = typeof options.cwd === 'string' ? options.cwd.trim() : '';
+    const envCwd = (process.env.DEFAULT_CWD || '').trim();
+    const configuredCwd = requestedCwd || envCwd;
+    let sessionCwd = configuredCwd || fallbackCwd;
+    if (sessionCwd && !fs.existsSync(sessionCwd)) {
+      console.warn(`[Session] DEFAULT_CWD not found: ${sessionCwd}. Falling back to ${fallbackCwd}.`);
+      sessionCwd = fallbackCwd;
+    }
+
+    this.cwd = sessionCwd;
+
     // Default to bash on Linux/WSL, cmd.exe on Windows
     const defaultShell = process.platform === 'win32' ? 'cmd.exe' : 'bash';
     this.shell = options.shell || defaultShell;
@@ -76,12 +90,14 @@ class NativeSession extends EventEmitter {
         name: 'xterm-256color',
         cols: this.cols,
         rows: this.rows,
-        cwd: process.env.USERPROFILE || process.env.HOME,
+        cwd: sessionCwd,
         env: process.env
       });
 
       this.process.onData((data) => {
-        console.log('PTY data:', JSON.stringify(data.substring(0, 100)));
+        if (debug) {
+          console.log('PTY data:', JSON.stringify(data.substring(0, 100)));
+        }
         this.appendBuffer(data);
         this.broadcast({ type: 'output', data });
       });
@@ -93,7 +109,7 @@ class NativeSession extends EventEmitter {
     } else {
       // Fallback to child_process
       this.process = spawn(shellPath, shellArgs, {
-        cwd: process.env.USERPROFILE || process.env.HOME,
+        cwd: sessionCwd,
         env: {
           ...process.env,
           TERM: 'xterm-256color',
@@ -109,7 +125,9 @@ class NativeSession extends EventEmitter {
       // Handle stdout
       this.process.stdout.on('data', (data) => {
         const str = data.toString();
-        console.log('Shell stdout:', JSON.stringify(str));
+        if (debug) {
+          console.log('Shell stdout:', JSON.stringify(str));
+        }
         this.appendBuffer(str);
         this.broadcast({ type: 'output', data: str });
       });
@@ -134,7 +152,7 @@ class NativeSession extends EventEmitter {
 
     // Log session start (don't inject into terminal output)
     const mode = this.usePty ? 'PTY' : 'basic';
-    console.log(`[Session] Started: ${shellPath} (${mode})`);
+    console.log(`[Session] Started: ${shellPath} (${mode}) cwd=${sessionCwd}`);
   }
 
   appendBuffer(data) {
@@ -327,10 +345,14 @@ class NativeSession extends EventEmitter {
       } else {
         normalized = data.replace(/\r(?!\n)/g, '\r\n');
       }
-      console.log('Writing to shell:', JSON.stringify(normalized));
+      if (debug) {
+        console.log('Writing to shell:', JSON.stringify(normalized));
+      }
       this.process.stdin.write(normalized);
     } else {
-      console.log('Cannot write - stdin not writable');
+      if (debug) {
+        console.log('Cannot write - stdin not writable');
+      }
     }
   }
 
@@ -344,10 +366,14 @@ class NativeSession extends EventEmitter {
       if (isLargePaste) {
         // Bracketed paste mode: wrap content so shell knows it's pasted
         const bracketedData = `\x1b[200~${data}\x1b[201~`;
-        console.log(`Writing large paste to PTY: ${data.length} bytes`);
+        if (debug) {
+          console.log(`Writing large paste to PTY: ${data.length} bytes`);
+        }
         this.process.write(bracketedData);
       } else {
-        console.log('Writing to PTY:', JSON.stringify(data.slice(0, 50)));
+        if (debug) {
+          console.log('Writing to PTY:', JSON.stringify(data.slice(0, 50)));
+        }
         this.process.write(data);
       }
     } else if (this.process && this.process.stdin && this.process.stdin.writable) {
@@ -358,7 +384,9 @@ class NativeSession extends EventEmitter {
         this.handleLineInput(data);
       }
     } else {
-      console.log('Cannot write - stdin not writable');
+      if (debug) {
+        console.log('Cannot write - stdin not writable');
+      }
     }
   }
 

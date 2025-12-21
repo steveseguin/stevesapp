@@ -202,6 +202,7 @@
   <div id="connect-screen">
     <h1>Steve's App</h1>
     <form id="connect-form" autocomplete="on">
+      <input type="text" id="username-input" name="username" autocomplete="username" aria-hidden="true" tabindex="-1" style="position: absolute; left: -9999px; width: 1px; height: 1px;">
       <input type="password" id="password-input" placeholder="API Token" autocomplete="current-password">
       <button type="submit" id="connect-btn">Connect</button>
     </form>
@@ -233,6 +234,7 @@
       <button data-key="\x1b[C" class="arrow-btn">▶</button>
       <button data-key="\x7f" class="key-btn">⌫</button>
       <button data-key="\x09" class="key-btn">Tab</button>
+      <button data-key="\x0d" class="key-btn">Enter</button>
       <button data-key="\x03" class="key-btn">Ctrl+C</button>
       <button data-key="\x04" class="key-btn">Ctrl+D</button>
       <button data-key="\x1b" class="key-btn">Esc</button>
@@ -257,8 +259,10 @@
         this.term = null;
         this.fitAddon = null;
         this.connected = false;
+        this.connecting = false;
         this.sessions = [];
         this.currentSession = null;
+        this.attachedSessionId = null;
         this.sessionBuffers = {}; // Store buffer per session
         this.sessionActivity = {}; // Track last activity per session
         this.sessionHasPty = {}; // Track PTY status per session
@@ -278,8 +282,9 @@
         // Check URL params or localStorage
         const params = new URLSearchParams(window.location.search);
         const savedToken = localStorage.getItem('steves-app-token');
+        this.debug = params.get('debug') === '1';
         this.room = params.get('room') || 'steves-app';
-        this.targetStreamId = params.get('stream') || 'host';
+        this.targetStreamId = params.get('stream') || 'server';
         if (params.get('token')) this.passwordInput.value = params.get('token');
         else if (savedToken) this.passwordInput.value = savedToken;
 
@@ -310,7 +315,7 @@
       }
 
       createSession(shell) {
-        console.log('Creating new session:', shell);
+        this.log('Creating new session:', shell);
         this.sendData({ type: 'createSession', shell });
         // Hide panel after creating
         this.sessionsPanel.classList.add('hidden');
@@ -326,7 +331,7 @@
 
       activateSessionIfUnset(sessionId) {
         if (!this.currentSession && sessionId) {
-          this.selectSession(sessionId);
+          this.selectSession(sessionId, false);
         }
       }
 
@@ -366,7 +371,7 @@
         return `${hours}h ago`;
       }
 
-      selectSession(sessionId) {
+      selectSession(sessionId, shouldAttach = true) {
         this.currentSession = sessionId;
         const session = this.sessions.find(s => s.id === sessionId);
         this.sessionInfo.textContent = session ? (session.shell || session.id.substring(0, 8)) : sessionId.substring(0, 8);
@@ -379,16 +384,21 @@
           }
         }
 
-        // Request fresh buffer from host
-        this.sendData({ type: 'attach', sessionId });
+        if (shouldAttach && this.attachedSessionId !== sessionId) {
+          // Request fresh buffer from host
+          this.sendData({ type: 'attach', sessionId });
+        }
       }
 
       async connect() {
+        if (this.connected || this.connecting) return;
+        this.connecting = true;
         const room = this.room;
         const password = this.passwordInput.value.trim();
 
         if (!password) {
           this.status.textContent = 'Please enter API token';
+          this.connecting = false;
           return;
         }
 
@@ -402,7 +412,7 @@
 
           this.vdo.addEventListener('dataReceived', (e) => {
             const msg = e.detail.data;
-            console.log('Received:', msg);
+            this.log('Received:', msg);
 
             if (msg.type === 'output') {
               // Store in buffer for current session
@@ -431,6 +441,7 @@
               this.ensureSession(sid);
               if (sid) {
                 this.sessionBuffers[sid] = msg.data;
+                this.attachedSessionId = sid;
               }
               this.activateSessionIfUnset(sid);
               if (this.term && (!msg.sessionId || msg.sessionId === this.currentSession)) {
@@ -438,13 +449,13 @@
                 if (msg.data) this.term.write(msg.data);
               }
             } else if (msg.type === 'sessions') {
-              console.log('Sessions:', msg.sessions);
+              this.log('Sessions:', msg.sessions);
               this.sessions = msg.sessions;
               // Validate currentSession still exists, reset if not
               if (this.currentSession) {
                 const exists = msg.sessions.some(s => s.id === this.currentSession);
                 if (!exists && msg.sessions.length > 0) {
-                  console.log('Current session no longer exists, resetting');
+                  this.log('Current session no longer exists, resetting');
                   this.currentSession = null;
                 }
               }
@@ -455,6 +466,7 @@
             } else if (msg.type === 'info') {
               // Track PTY status for this session
               if (msg.sessionId) {
+                this.attachedSessionId = msg.sessionId;
                 this.sessionHasPty[msg.sessionId] = msg.hasPty || false;
               }
               // Only update display if we requested this session
@@ -468,22 +480,26 @@
           });
 
           this.vdo.addEventListener('peerConnected', (e) => {
-            console.log('Connected to host (peer)');
+            this.log('Connected to host (peer)');
             this.sessionInfo.textContent = 'Peer connected - waiting for data channel...';
           });
 
           this.vdo.addEventListener('peerDisconnected', (e) => {
-            console.log('Host disconnected');
+            this.log('Host disconnected');
             this.sessionInfo.textContent = 'Host disconnected';
           });
 
           // Wait for data channel to be ready
           this.dataChannelReady = false;
           this.vdo.addEventListener('dataChannelOpen', (e) => {
-            console.log('Data channel open!');
+            this.log('Data channel open!');
             this.dataChannelReady = true;
             this.sessionInfo.textContent = 'Connected - waiting for sessions...';
-            // Host sends sessions automatically on dataChannelOpen, no need to request
+            this.sendData({ type: 'getSessions' });
+            if (this.relayTimeout) {
+              clearTimeout(this.relayTimeout);
+              this.relayTimeout = null;
+            }
           });
 
           await this.vdo.connect();
@@ -491,7 +507,7 @@
           // Listen for room listing to find the host
           this.viewedStream = false;
           this.vdo.addEventListener('listing', (e) => {
-            console.log('Room listing:', e.detail);
+            this.log('Room listing:', e.detail);
             if (this.viewedStream) return; // Only view once
 
             const list = e.detail.list || [];
@@ -499,7 +515,7 @@
             const hostEntry = list.find(entry => entry.streamID === target)
               || list.find(entry => entry.streamID && entry.streamID.startsWith(target));
             if (hostEntry) {
-              console.log('Connecting to host stream:', hostEntry.streamID);
+              this.log('Connecting to host stream:', hostEntry.streamID);
               this.viewedStream = true;
               this.vdo.view(hostEntry.streamID, { audio: false, video: false });
             }
@@ -507,14 +523,14 @@
 
           // Handle host joining after us
           this.vdo.addEventListener('videoaddedtoroom', (e) => {
-            console.log('Video added to room:', e.detail);
+            this.log('Video added to room:', e.detail);
             if (this.viewedStream) return; // Already connected
 
             const streamID = e.detail.streamID;
             const target = this.targetStreamId;
             // Only connect if it's the target stream
             if (streamID && (streamID === target || streamID.startsWith(target))) {
-              console.log('Host joined, connecting to stream:', streamID);
+              this.log('Host joined, connecting to stream:', streamID);
               this.viewedStream = true;
               this.vdo.view(streamID, { audio: false, video: false });
             }
@@ -523,11 +539,18 @@
           await this.vdo.joinRoom({ room, password });
 
           this.connected = true;
+          this.connecting = false;
           this.showTerminal();
+          this.relayTimeout = setTimeout(() => {
+            if (!this.dataChannelReady) {
+              this.sessionInfo.textContent = 'Waiting for P2P relay... check server P2P settings.';
+            }
+          }, 7000);
 
         } catch (err) {
           console.error('Connection failed:', err);
           this.status.textContent = 'Failed: ' + err.message;
+          this.connecting = false;
         }
       }
 
@@ -614,10 +637,10 @@
 
         // File input change
         document.getElementById('file-input').addEventListener('change', async (e) => {
-          console.log('File input changed:', e.target.files);
+          this.log('File input changed:', e.target.files);
           const file = e.target.files[0];
           if (file) {
-            console.log('Starting upload for:', file.name, file.type, file.size);
+            this.log('Starting upload for:', file.name, file.type, file.size);
             await this.uploadFile(file);
             e.target.value = ''; // Reset for next upload
           }
@@ -667,12 +690,18 @@
         window.addEventListener('resize', () => this.fitAddon.fit());
       }
 
+      log(...args) {
+        if (this.debug) {
+          console.log(...args);
+        }
+      }
+
       sendData(data) {
         if (this.vdo && this.connected && this.dataChannelReady) {
-          console.log('sendData:', data.type, data.type === 'upload' ? `(${data.filename})` : '');
+          this.log('sendData:', data.type, data.type === 'upload' ? `(${data.filename})` : '');
           this.vdo.sendData(data);
         } else {
-          console.log('Cannot send - channel not ready, connected:', this.connected, 'dataChannelReady:', this.dataChannelReady);
+          this.log('Cannot send - channel not ready, connected:', this.connected, 'dataChannelReady:', this.dataChannelReady);
         }
       }
 
@@ -681,18 +710,18 @@
           text = this.term?.getSelection();
         }
         if (!text) {
-          console.log('Nothing to copy');
+          this.log('Nothing to copy');
           return;
         }
 
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(text);
-            console.log('Copied to clipboard');
+            this.log('Copied to clipboard');
             return;
           }
         } catch (err) {
-          console.log('Clipboard API failed, trying fallback:', err.message);
+          this.log('Clipboard API failed, trying fallback:', err.message);
         }
 
         // Fallback
@@ -708,7 +737,7 @@
           textarea.setSelectionRange(0, textarea.value.length);
           document.execCommand('copy');
           document.body.removeChild(textarea);
-          console.log('Fallback copy succeeded');
+          this.log('Fallback copy succeeded');
         } catch (err) {
           console.error('Fallback copy failed:', err);
         }
@@ -725,7 +754,7 @@
             return;
           }
         } catch (err) {
-          console.log('Clipboard API paste failed:', err.message);
+          this.log('Clipboard API paste failed:', err.message);
         }
 
         // Fallback - try using execCommand (may not work in all browsers)
@@ -750,7 +779,7 @@
       }
 
       async uploadFile(file) {
-        console.log('uploadFile called:', file.name);
+        this.log('uploadFile called:', file.name);
         const statusEl = document.getElementById('upload-status');
         const textEl = document.getElementById('upload-text');
 
@@ -760,11 +789,11 @@
 
         try {
           // Read file as base64
-          console.log('Reading file as base64...');
+          this.log('Reading file as base64...');
           const base64 = await this.fileToBase64(file);
-          console.log('Base64 ready, length:', base64.length);
+          this.log('Base64 ready, length:', base64.length);
 
-          console.log('Sending upload:', file.name, 'session:', this.currentSession);
+          this.log('Sending upload:', file.name, 'session:', this.currentSession);
 
           // WebRTC data channels have ~16KB limit, so chunk large uploads
           const CHUNK_SIZE = 12000; // Leave room for JSON overhead
@@ -772,7 +801,7 @@
             // Send in chunks
             const totalChunks = Math.ceil(base64.length / CHUNK_SIZE);
             const uploadId = Date.now().toString(36);
-            console.log(`Sending ${totalChunks} chunks for upload ${uploadId}`);
+            this.log(`Sending ${totalChunks} chunks for upload ${uploadId}`);
 
             for (let i = 0; i < totalChunks; i++) {
               const chunk = base64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
@@ -838,15 +867,15 @@
 
       waitForUploadConfirmation(timeout) {
         return new Promise((resolve) => {
-          console.log('Waiting for uploadComplete confirmation...');
+          this.log('Waiting for uploadComplete confirmation...');
           let resolved = false;
           let timeoutId = null;
 
           const handler = (e) => {
             const msg = e.detail.data;
-            console.log('Upload wait - received message:', msg.type);
+            this.log('Upload wait - received message:', msg.type);
             if (msg.type === 'uploadComplete' && !resolved) {
-              console.log('Upload confirmed!', msg);
+              this.log('Upload confirmed!', msg);
               resolved = true;
               clearTimeout(timeoutId);
               this.vdo.removeEventListener('dataReceived', handler);
@@ -857,7 +886,7 @@
 
           timeoutId = setTimeout(() => {
             if (!resolved) {
-              console.log('Upload confirmation timeout');
+              this.log('Upload confirmation timeout');
               resolved = true;
               this.vdo.removeEventListener('dataReceived', handler);
               resolve(false);
@@ -896,6 +925,8 @@
           this.vdo = null;
         }
         this.connected = false;
+        this.connecting = false;
+        this.attachedSessionId = null;
         if (this.term) {
           this.term.dispose();
           this.term = null;

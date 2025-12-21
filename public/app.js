@@ -13,13 +13,13 @@ class TerminalHub {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 10;
 
-    // VDO.Ninja P2P relay
-    this.vdo = null;
-    this.p2pActive = false;
-    this.p2pPeers = new Set();
-    this.terminalBuffer = ''; // Cache terminal output for new P2P peers
-    this.sessionBuffers = {}; // Per-session buffers for independent viewing
-    this.pendingUploads = {}; // For reassembling chunked uploads
+    this.terminalBuffer = '';
+    this.sessionBuffers = {};
+    this.p2pStatusInfo = {
+      enabled: false,
+      active: false,
+      available: true
+    };
 
     // Line editor for cursor support without PTY
     this.lineBuffer = '';
@@ -31,6 +31,14 @@ class TerminalHub {
 
     // Activity tracking per session
     this.sessionActivity = {}; // sessionId -> lastActivityTime
+
+    this.autoAttachEnabled = true;
+    this.userDetached = false;
+    this.pendingAttachSessionId = null;
+    this.lastRenderedSessionId = null;
+
+    const params = new URLSearchParams(window.location.search);
+    this.debug = params.get('debug') === '1';
 
     this.initElements();
     this.initEvents();
@@ -142,12 +150,14 @@ class TerminalHub {
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-      console.log('Connected to server');
+      this.log('Connected to server');
       this.reconnectAttempts = 0;
       this.showMainScreen();
       this.initTerminal();
-      // Auto-start P2P for remote access
-      this.startP2P();
+      this.requestP2PStatus();
+      if (this.currentSessionId && !this.userDetached) {
+        this.attachSession(this.currentSessionId);
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -155,7 +165,7 @@ class TerminalHub {
     };
 
     this.ws.onclose = (event) => {
-      console.log('Disconnected:', event.code, event.reason);
+      this.log('Disconnected:', event.code, event.reason);
 
       if (event.code === 4001) {
         // Auth failed
@@ -169,7 +179,7 @@ class TerminalHub {
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
         const delay = Math.min(1000 * this.reconnectAttempts, 10000);
-        console.log(`Reconnecting in ${delay}ms...`);
+        this.log(`Reconnecting in ${delay}ms...`);
         setTimeout(() => this.connect(), delay);
       }
     };
@@ -184,14 +194,26 @@ class TerminalHub {
       case 'sessions':
         this.sessions = msg.sessions;
         this.renderSessions();
-        if (this.p2pActive && this.p2pDataChannelReady) {
-          this.sendP2P({ type: 'sessions', sessions: this.sessions });
+        if (this.currentSessionId) {
+          const exists = msg.sessions.some(session => session.id === this.currentSessionId);
+          if (!exists) {
+            this.currentSessionId = null;
+            this.pendingAttachSessionId = null;
+            this.lastRenderedSessionId = null;
+            this.sessionInfo.textContent = 'No session selected';
+            this.disconnectBtn.classList.add('hidden');
+          }
+        }
+        if (this.autoAttachEnabled && !this.currentSessionId && msg.sessions.length > 0) {
+          const firstSession = msg.sessions[0];
+          this.autoAttachEnabled = false;
+          this.attachSession(firstSession.id);
         }
         break;
 
       case 'output':
-        const outputSessionId = msg.sessionId || this.currentSessionId;
-        console.log('WS output received, session:', outputSessionId, 'length:', msg.data.length);
+        const outputSessionId = msg.sessionId || this.currentSessionId || this.pendingAttachSessionId;
+        this.log('WS output received, session:', outputSessionId, 'length:', msg.data.length);
 
         // Track activity for this session
         if (outputSessionId) {
@@ -227,35 +249,36 @@ class TerminalHub {
             this.terminalBuffer = this.terminalBuffer.slice(-50000);
           }
         }
-
-        // Relay to P2P peers with sessionId
-        this.sendP2P({ type: 'output', data: msg.data, sessionId: outputSessionId });
         break;
 
       case 'buffer':
-        const bufferSessionId = msg.sessionId || this.currentSessionId;
-        console.log('WS buffer received, session:', bufferSessionId, 'length:', msg.data.length);
+        const bufferSessionId = msg.sessionId || this.currentSessionId || this.pendingAttachSessionId;
+        this.log('WS buffer received, session:', bufferSessionId, 'length:', msg.data.length);
 
         // Store in per-session buffer
         if (bufferSessionId) {
           this.sessionBuffers[bufferSessionId] = msg.data;
         }
 
-        // Only display if it's our selected session
-        if (bufferSessionId === this.currentSessionId) {
+        const shouldRender = bufferSessionId === this.currentSessionId
+          || bufferSessionId === this.pendingAttachSessionId;
+        if (shouldRender) {
           this.terminalBuffer = msg.data;
           if (this.term) {
             this.term.clear();
             this.term.write(msg.data);
           }
+          this.lastRenderedSessionId = bufferSessionId;
+          if (bufferSessionId === this.pendingAttachSessionId) {
+            this.pendingAttachSessionId = null;
+          }
         }
-
-        // Relay buffer to P2P peers with sessionId
-        this.sendP2P({ type: 'buffer', data: msg.data, sessionId: bufferSessionId });
         break;
 
       case 'info':
+        const previousSessionId = this.currentSessionId;
         this.currentSessionId = msg.sessionId;
+        this.pendingAttachSessionId = null;
         this.hasPty = msg.hasPty || false;
         const sessionEntry = this.sessions.find(session => session.id === msg.sessionId);
         if (sessionEntry) {
@@ -265,18 +288,36 @@ class TerminalHub {
         this.sessionInfo.textContent = `${msg.sessionType} (${mode}): ${msg.sessionId.substring(0, 8)}...`;
         this.disconnectBtn.classList.remove('hidden');
         this.resetLineEditor();
+        if (this.term && this.lastRenderedSessionId !== msg.sessionId) {
+          const buffer = this.sessionBuffers[msg.sessionId];
+          this.term.clear();
+          if (buffer) {
+            this.terminalBuffer = buffer;
+            this.term.write(buffer);
+          } else {
+            this.terminalBuffer = '';
+          }
+          this.lastRenderedSessionId = msg.sessionId;
+        }
         break;
 
       case 'error':
         console.error('Server error:', msg.message);
-        // Relay errors to P2P peers
-        this.sendP2P({ type: 'error', message: msg.message });
+        if (msg.message && msg.message.includes('Session not found')) {
+          this.currentSessionId = null;
+          this.pendingAttachSessionId = null;
+          this.lastRenderedSessionId = null;
+          this.sessionInfo.textContent = 'No session selected';
+          this.disconnectBtn.classList.add('hidden');
+        }
         break;
 
       case 'uploadComplete':
-        console.log('Upload complete:', msg.filename);
-        // Relay to P2P peers so phone gets confirmation
-        this.sendP2P({ type: 'uploadComplete', filename: msg.filename });
+        this.log('Upload complete:', msg.filename);
+        break;
+
+      case 'p2pStatus':
+        this.updateP2PStatus(msg);
         break;
     }
   }
@@ -389,9 +430,9 @@ class TerminalHub {
 
     // Handle input; server echoes/edits for non-PTY sessions.
     this.term.onData((data) => {
-      console.log('Terminal input:', JSON.stringify(data), 'Session:', this.currentSessionId);
+      this.log('Terminal input:', JSON.stringify(data), 'Session:', this.currentSessionId);
       if (!this.currentSessionId || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        console.log('Not sending - no session or WS not open');
+        this.log('Not sending - no session or WS not open');
         return;
       }
 
@@ -538,16 +579,22 @@ class TerminalHub {
     if (this.activityTimer) clearInterval(this.activityTimer);
     this.activityTimer = setInterval(() => {
       this.updateSessionActivityDisplay();
-      // Also send activity updates to P2P peers
-      this.sendP2P({ type: 'activity', activity: this.sessionActivity });
     }, 5000);
   }
 
   attachSession(sessionId) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (sessionId === this.currentSessionId && !this.pendingAttachSessionId) {
+        return;
+      }
+      this.pendingAttachSessionId = sessionId;
+      this.lastRenderedSessionId = null;
+      this.currentSessionId = sessionId;
       this.ws.send(JSON.stringify({ type: 'attach', sessionId }));
       this.term.clear();
       this.terminalBuffer = ''; // Clear buffer for new session
+      this.userDetached = false;
+      this.autoAttachEnabled = false;
 
       // Close sidebar on mobile, collapse on desktop
       if (window.innerWidth <= 768) {
@@ -566,6 +613,10 @@ class TerminalHub {
       this.ws.send(JSON.stringify({ type: 'detach' }));
     }
     this.currentSessionId = null;
+    this.userDetached = true;
+    this.autoAttachEnabled = false;
+    this.pendingAttachSessionId = null;
+    this.lastRenderedSessionId = null;
     this.terminalBuffer = ''; // Clear buffer
     this.sessionInfo.textContent = 'No session selected';
     this.disconnectBtn.classList.add('hidden');
@@ -597,7 +648,7 @@ class TerminalHub {
       }
 
       const session = await response.json();
-      console.log('Created session:', session);
+      this.log('Created session:', session);
 
       // Auto-attach to new session
       setTimeout(() => this.attachSession(session.id), 100);
@@ -688,7 +739,7 @@ class TerminalHub {
       }
 
       const session = await response.json();
-      console.log('Attached to window:', session);
+      this.log('Attached to window:', session);
 
       // Auto-attach to new session
       setTimeout(() => this.attachSession(session.id), 100);
@@ -716,7 +767,7 @@ class TerminalHub {
         return;
       }
     } catch (err) {
-      console.log('Clipboard API paste failed, trying fallback:', err.message);
+      this.log('Clipboard API paste failed, trying fallback:', err.message);
     }
 
     // Fallback: create a temporary textarea and use execCommand
@@ -749,9 +800,9 @@ class TerminalHub {
     // Try modern clipboard API first
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
-        console.log('Copied to clipboard');
+        this.log('Copied to clipboard');
       }).catch(err => {
-        console.log('Clipboard API copy failed, trying fallback:', err.message);
+        this.log('Clipboard API copy failed, trying fallback:', err.message);
         this.fallbackCopy(text);
       });
       return;
@@ -779,7 +830,7 @@ class TerminalHub {
       const ok = document.execCommand('copy');
       document.body.removeChild(textarea);
       if (ok) {
-        console.log('Fallback copy succeeded');
+        this.log('Fallback copy succeeded');
       } else {
         console.error('document.execCommand(copy) returned false');
       }
@@ -1012,7 +1063,7 @@ class TerminalHub {
   // File upload method
   async uploadFile(file) {
     if (!this.currentSessionId || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.log('Cannot upload - no session or WS not connected');
+      this.log('Cannot upload - no session or WS not connected');
       return;
     }
 
@@ -1035,7 +1086,7 @@ class TerminalHub {
         sessionId: this.currentSessionId
       }));
 
-      console.log(`Uploading ${filename} (${base64.length} bytes base64)`);
+      this.log(`Uploading ${filename} (${base64.length} bytes base64)`);
     } catch (err) {
       console.error('Upload failed:', err);
       this.term?.write(`\r\n\x1b[31m[Upload failed: ${err.message}]\x1b[0m\r\n`);
@@ -1055,184 +1106,63 @@ class TerminalHub {
     });
   }
 
-  // P2P relay methods
-  async toggleP2P() {
-    if (this.p2pActive) {
-      this.stopP2P();
-    } else {
-      await this.startP2P();
+  log(...args) {
+    if (this.debug) {
+      console.log(...args);
     }
   }
 
-  async startP2P() {
-    try {
-      // Fixed room name - password differentiates users
-      const roomId = 'steves-app';
-
-      this.vdo = new VDONinjaSDK();
-
-      // Listen for data from remote peers
-      this.vdo.addEventListener('dataReceived', (e) => {
-        const { data, uuid } = e.detail;
-        console.log('P2P data received:', data);
-
-        // Handle incoming data from phone
-        if (data.type === 'input') {
-          // Always forward phone input directly to the server with sessionId
-          // Server-side echo keeps all clients in sync
-          const targetSession = data.sessionId || this.currentSessionId;
-          if (targetSession) {
-            this.ws.send(JSON.stringify({ type: 'input', data: data.data, sessionId: targetSession }));
-          }
-        } else if (data.type === 'attach') {
-          // Remote wants buffer for a specific session (don't switch host's view)
-          const sessionId = data.sessionId;
-          const session = this.sessions.find(s => s.id === sessionId);
-          if (session) {
-            this.sendP2P({
-              type: 'info',
-              sessionId,
-              sessionType: session.type,
-              hasPty: session.hasPty || false
-            });
-          }
-          if (Object.prototype.hasOwnProperty.call(this.sessionBuffers, sessionId)) {
-            console.log('Sending buffer for session:', sessionId);
-            this.sendP2P({ type: 'buffer', data: this.sessionBuffers[sessionId], sessionId });
-          }
-        } else if (data.type === 'getSessions') {
-          // Remote wants session list (fallback - normally sent on dataChannelOpen)
-          this.sendP2P({ type: 'sessions', sessions: this.sessions });
-        } else if (data.type === 'upload') {
-          // Forward small upload to server via WebSocket
-          console.log('P2P upload received:', data.filename, 'size:', data.data?.length, 'session:', data.sessionId);
-          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            console.log('Forwarding upload to server via WebSocket');
-            this.ws.send(JSON.stringify({
-              type: 'upload',
-              filename: data.filename,
-              mimeType: data.mimeType,
-              data: data.data,
-              sessionId: data.sessionId || this.currentSessionId
-            }));
-          } else {
-            console.error('Cannot forward upload - WebSocket not connected');
-          }
-        } else if (data.type === 'uploadChunk') {
-          // Handle chunked upload - reassemble then forward
-          const { uploadId, filename, mimeType, chunk, chunkIndex, totalChunks, sessionId } = data;
-          console.log(`P2P upload chunk ${chunkIndex + 1}/${totalChunks} for ${uploadId}`);
-
-          if (!this.pendingUploads[uploadId]) {
-            this.pendingUploads[uploadId] = {
-              filename,
-              mimeType,
-              sessionId: sessionId || this.currentSessionId,
-              chunks: new Array(totalChunks),
-              received: 0
-            };
-          }
-
-          const pending = this.pendingUploads[uploadId];
-          pending.chunks[chunkIndex] = chunk;
-          pending.received++;
-
-          if (pending.received === totalChunks) {
-            // All chunks received, reassemble and forward
-            const fullData = pending.chunks.join('');
-            console.log('All chunks received, forwarding complete upload:', filename, 'size:', fullData.length);
-
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-              this.ws.send(JSON.stringify({
-                type: 'upload',
-                filename: pending.filename,
-                mimeType: pending.mimeType,
-                data: fullData,
-                sessionId: pending.sessionId
-              }));
-            }
-
-            delete this.pendingUploads[uploadId];
-          }
-        }
-      });
-
-      // Track peer connections
-      this.vdo.addEventListener('peerConnected', (e) => {
-        console.log('P2P peer connected:', e.detail.uuid);
-        this.p2pPeers.add(e.detail.uuid);
-      });
-
-      this.vdo.addEventListener('peerDisconnected', (e) => {
-        console.log('P2P peer disconnected:', e.detail.uuid);
-        this.p2pPeers.delete(e.detail.uuid);
-      });
-
-      // Data channel ready - now safe to send
-      this.p2pDataChannelReady = false;
-      this.vdo.addEventListener('dataChannelOpen', (e) => {
-        console.log('P2P data channel open:', e.detail);
-        this.p2pDataChannelReady = true;
-        // Send initial state to the peer
-        this.sendP2P({ type: 'sessions', sessions: this.sessions });
-        if (this.currentSessionId) {
-          const currentSession = this.sessions.find(session => session.id === this.currentSessionId);
-          this.sendP2P({
-            type: 'info',
-            sessionId: this.currentSessionId,
-            sessionType: currentSession?.type || 'native',
-            hasPty: currentSession?.hasPty || this.hasPty
-          });
-        }
-      });
-
-      // Connect to VDO.Ninja
-      await this.vdo.connect();
-      await this.vdo.joinRoom({ room: roomId, password: this.token });
-      await this.vdo.announce({ streamID: 'host' });
-
-      this.p2pActive = true;
-      this.p2pToggle.textContent = 'Stop P2P';
-      this.p2pToggle.classList.add('active');
-
-      // Subscribe to all sessions for independent viewing
-      this.ws.send(JSON.stringify({ type: 'subscribeAll' }));
-
-      // Show connection info
-      this.p2pStatus.textContent = 'P2P Active';
-      this.p2pStatus.classList.remove('hidden');
-
-      console.log('P2P relay started');
-
-    } catch (err) {
-      console.error('Failed to start P2P:', err);
-      alert('Failed to start P2P: ' + err.message);
-    }
-  }
-
-  stopP2P() {
-    if (this.vdo) {
-      this.vdo.disconnect();
-      this.vdo = null;
-    }
-    // Unsubscribe from all sessions
+  requestP2PStatus() {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: 'unsubscribeAll' }));
+      this.ws.send(JSON.stringify({ type: 'p2p', action: 'get' }));
     }
-    this.p2pActive = false;
-    this.p2pDataChannelReady = false;
-    this.p2pPeers.clear();
-    this.p2pToggle.textContent = 'Share P2P';
-    this.p2pToggle.classList.remove('active');
-    this.p2pStatus.classList.add('hidden');
-    console.log('P2P relay stopped');
   }
 
-  sendP2P(data) {
-    if (this.vdo && this.p2pActive && this.p2pDataChannelReady) {
-      console.log('Sending P2P:', data.type);
-      this.vdo.sendData(data);
+  updateP2PStatus(status) {
+    this.p2pStatusInfo = status;
+    const available = status.available !== false;
+    const enabled = !!status.enabled;
+    const active = !!status.active;
+
+    if (this.p2pToggle) {
+      this.p2pToggle.disabled = !available;
+      this.p2pToggle.classList.toggle('active', enabled);
+      if (!available) {
+        this.p2pToggle.textContent = 'P2P Unavailable';
+      } else if (enabled) {
+        this.p2pToggle.textContent = 'Stop P2P';
+      } else {
+        this.p2pToggle.textContent = 'Share P2P';
+      }
     }
+
+    if (this.p2pStatus) {
+      let text = '';
+      if (!available) {
+        text = 'P2P unavailable';
+      } else if (active) {
+        text = 'P2P Active';
+      } else if (enabled) {
+        text = 'P2P Starting...';
+      } else {
+        text = 'P2P Disabled';
+      }
+
+      const detail = status.error || status.message;
+      if (detail) {
+        text += ` (${detail})`;
+      }
+
+      this.p2pStatus.textContent = text;
+      this.p2pStatus.classList.remove('hidden');
+    }
+  }
+
+  toggleP2P() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (this.p2pStatusInfo && this.p2pStatusInfo.available === false) return;
+    const nextEnabled = !(this.p2pStatusInfo && this.p2pStatusInfo.enabled);
+    this.ws.send(JSON.stringify({ type: 'p2p', action: 'set', enabled: nextEnabled }));
   }
 }
 

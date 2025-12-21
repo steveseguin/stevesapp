@@ -12,6 +12,34 @@ function createServer(options = {}) {
   const server = http.createServer(app);
   const wss = new WebSocket.Server({ server });
   const sessionManager = options.sessionManager || new SessionManager();
+  const p2pManager = options.p2pManager || null;
+  const debug = process.env.SERVER_DEBUG === 'true' || process.env.DEBUG === 'true';
+
+  const getP2PStatus = () => {
+    if (!p2pManager || typeof p2pManager.getStatus !== 'function') {
+      return {
+        type: 'p2pStatus',
+        enabled: false,
+        active: false,
+        available: false,
+        message: 'P2P relay not configured'
+      };
+    }
+    return { type: 'p2pStatus', ...p2pManager.getStatus() };
+  };
+
+  const broadcastP2PStatus = () => {
+    const payload = JSON.stringify(getP2PStatus());
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    });
+  };
+
+  if (p2pManager && typeof p2pManager.on === 'function') {
+    p2pManager.on('change', broadcastP2PStatus);
+  }
 
   // Middleware
   app.use(express.json());
@@ -27,12 +55,13 @@ function createServer(options = {}) {
 
   // Create a new native session
   app.post('/api/sessions', authenticate, (req, res) => {
-    const { shell, cols, rows } = req.body;
+    const { shell, cols, rows, cwd } = req.body;
     try {
       const session = sessionManager.createNativeSession({
         shell: shell || 'cmd.exe',
         cols: cols || parseInt(process.env.DEFAULT_COLS) || 120,
-        rows: rows || parseInt(process.env.DEFAULT_ROWS) || 30
+        rows: rows || parseInt(process.env.DEFAULT_ROWS) || 30,
+        cwd: cwd || undefined
       });
       res.json({ id: session.id, type: session.type, shell: session.shell });
     } catch (err) {
@@ -147,7 +176,9 @@ function createServer(options = {}) {
         switch (msg.type) {
           case 'attach':
             // Attach to a session
-            console.log('Client attaching to session:', msg.sessionId);
+            if (debug) {
+              console.log('Client attaching to session:', msg.sessionId);
+            }
             const session = sessionManager.getSession(msg.sessionId);
             if (session) {
               const previousSession = attachedSession;
@@ -166,13 +197,16 @@ function createServer(options = {}) {
               }
               session.addClient(ws);
               const bufferContent = session.getBuffer();
-              console.log('Client attached, total clients:', session.clients.size);
-              console.log('Sending buffer, length:', bufferContent.length, 'chars');
+              if (debug) {
+                console.log('Client attached, total clients:', session.clients.size);
+                console.log('Sending buffer, length:', bufferContent.length, 'chars');
+              }
 
               // Send current buffer
               ws.send(JSON.stringify({
                 type: 'buffer',
-                data: bufferContent
+                data: bufferContent,
+                sessionId: session.id
               }));
 
               // Send session info
@@ -225,7 +259,9 @@ function createServer(options = {}) {
           case 'subscribeAll':
             // Subscribe to output from ALL sessions (for P2P relay)
             // Skip the already-attached session to avoid duplicates
-            console.log('Client subscribing to all sessions, attached:', attachedSession?.id);
+            if (debug) {
+              console.log('Client subscribing to all sessions, attached:', attachedSession?.id);
+            }
             subscribeAllActive = true;
             resyncSubscriptions();
             // Send buffers for all sessions EXCEPT the attached one (it already has its buffer)
@@ -241,14 +277,53 @@ function createServer(options = {}) {
 
           case 'unsubscribeAll':
             // Unsubscribe from all sessions
-            console.log('Client unsubscribing from all sessions');
+            if (debug) {
+              console.log('Client unsubscribing from all sessions');
+            }
             subscribeAllActive = false;
             clearSubscriptions();
             break;
 
+          case 'p2p': {
+            if (!p2pManager || typeof p2pManager.setEnabled !== 'function') {
+              ws.send(JSON.stringify(getP2PStatus()));
+              break;
+            }
+
+            if (msg.action === 'get' || msg.action === 'status') {
+              ws.send(JSON.stringify(getP2PStatus()));
+              break;
+            }
+
+            if (typeof msg.enabled === 'boolean') {
+              p2pManager.setEnabled(msg.enabled).catch((err) => {
+                if (debug) {
+                  console.error('Failed to update P2P status:', err);
+                }
+                ws.send(JSON.stringify({ ...getP2PStatus(), error: err.message }));
+              });
+              break;
+            }
+
+            if (msg.action === 'toggle') {
+              p2pManager.toggle().catch((err) => {
+                if (debug) {
+                  console.error('Failed to toggle P2P status:', err);
+                }
+                ws.send(JSON.stringify({ ...getP2PStatus(), error: err.message }));
+              });
+              break;
+            }
+
+            ws.send(JSON.stringify(getP2PStatus()));
+            break;
+          }
+
           case 'upload': {
             // Handle file upload from WebSocket client
-            console.log('[WS] Upload message received:', msg.filename, 'size:', msg.data?.length);
+            if (debug) {
+              console.log('[WS] Upload message received:', msg.filename, 'size:', msg.data?.length);
+            }
             const uploadSession = msg.sessionId
               ? sessionManager.getSession(msg.sessionId)
               : attachedSession;
@@ -273,7 +348,9 @@ function createServer(options = {}) {
               const filePath = path.join(tmpDir, filename);
               fs.writeFileSync(filePath, buffer);
 
-              console.log(`[WS] File uploaded: ${filePath} (${buffer.length} bytes)`);
+              if (debug) {
+                console.log(`[WS] File uploaded: ${filePath} (${buffer.length} bytes)`);
+              }
 
               // Insert the file path as editable text (like user typed it)
               const fileRef = `[image: ${filePath}] `;
@@ -315,6 +392,10 @@ function createServer(options = {}) {
       type: 'sessions',
       sessions: sessionManager.listSessions()
     }));
+
+    if (p2pManager) {
+      ws.send(JSON.stringify(getP2PStatus()));
+    }
   });
 
   // Broadcast session list updates

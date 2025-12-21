@@ -110,6 +110,9 @@ Local access: http://localhost:3000
 Remote access: http://localhost:3000/remote.html
 
 API Token: your-token-here
+
+[P2P] active - room "steves-app", stream "server"
+[P2P] Press "p" to toggle, "s" for status, "h" for help.
 ```
 
 ## Connecting
@@ -169,6 +172,20 @@ PORT=3000
 
 # Terminal scrollback buffer size
 SCROLLBACK=10000
+
+# Default working directory for new shell sessions (fallback: HOME/USERPROFILE)
+# Example (WSL): /mnt/c/Users/steve
+DEFAULT_CWD=
+
+# P2P relay settings (enabled by default)
+P2P_ENABLED=true
+VDO_ROOM=steves-app
+VDO_PASSWORD=your-secure-random-token
+VDO_STREAM_ID=server
+VDO_DEBUG=false
+
+# Legacy alias (use P2P_ENABLED instead)
+# VDO_SERVER=true
 ```
 
 If `API_TOKEN` is not set, a random token is generated each time the server starts.
@@ -179,8 +196,8 @@ Steve's App uses [VDO.Ninja](https://vdo.ninja) for P2P WebRTC connections, allo
 
 ### How it works
 
-1. Server announces itself to VDO.Ninja signaling server
-2. Your phone connects via the same room
+1. Node server announces itself to VDO.Ninja signaling server
+2. Your phone connects via the same room and stream
 3. Direct P2P connection is established
 4. All data flows encrypted between your devices
 
@@ -188,10 +205,16 @@ Steve's App uses [VDO.Ninja](https://vdo.ninja) for P2P WebRTC connections, allo
 
 ```bash
 # In .env
+P2P_ENABLED=true           # Enable the server P2P relay (default: true)
 VDO_ROOM=steves-app          # Room name (default: steves-app)
 VDO_PASSWORD=your-token      # Room password (defaults to API_TOKEN)
 VDO_STREAM_ID=server         # Stream identifier
 ```
+
+### Runtime controls
+
+- Desktop UI toggle controls the server relay state (the desktop browser does not announce P2P).
+- Server console menu: press `p` to toggle, `s` for status, `h` for help.
 
 ### Server-side relay (optional)
 

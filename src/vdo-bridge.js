@@ -43,6 +43,12 @@ class VdoBridge {
     this.handlePeerDisconnected = this.handlePeerDisconnected.bind(this);
   }
 
+  logDebug(...args) {
+    if (this.debug) {
+      console.log(...args);
+    }
+  }
+
   async start() {
     const SDK = resolveSdk();
     if (!SDK) {
@@ -263,10 +269,24 @@ class VdoBridge {
       case 'attach': {
         const session = this.sessionManager.getSession(msg.sessionId);
         if (session) {
-          const previousSession = peer.attachedSession;
-          if (previousSession && previousSession !== session) {
-            this.removeAttached(peer);
+          if (peer.attachedSession && peer.attachedSession.id === session.id && peer.attachedClient) {
             if (peer.subscribeAllActive) {
+              this.removeSubscription(uuid, session.id);
+            }
+            this.sendToPeer(uuid, { type: 'buffer', sessionId: session.id, data: session.getBuffer() });
+            this.sendToPeer(uuid, {
+              type: 'info',
+              sessionId: session.id,
+              sessionType: session.type,
+              hasPty: session.usePty || false
+            });
+            break;
+          }
+
+          const previousSession = peer.attachedSession;
+          if (previousSession) {
+            this.removeAttached(peer);
+            if (peer.subscribeAllActive && previousSession.id !== session.id) {
               const existing = this.sessionManager.getSession(previousSession.id);
               if (existing) {
                 this.addSubscription(uuid, existing);
@@ -358,8 +378,9 @@ class VdoBridge {
       case 'createSession': {
         // Create a new session from remote client
         const shell = msg.shell || 'bash';
-        console.log('[VDO] Creating new session:', shell);
-        const newSession = this.sessionManager.createNativeSession({ shell });
+        const cwd = typeof msg.cwd === 'string' ? msg.cwd : undefined;
+        this.logDebug('[VDO] Creating new session:', shell);
+        const newSession = this.sessionManager.createNativeSession({ shell, cwd });
         // Notify all peers about the new session
         this.handleSessionChange();
         // Auto-attach the creator to the new session
@@ -371,7 +392,7 @@ class VdoBridge {
 
       case 'upload': {
         // Handle file upload from P2P client
-        console.log('[VDO] Upload received:', msg.filename, 'size:', msg.data?.length, 'session:', msg.sessionId);
+        this.logDebug('[VDO] Upload received:', msg.filename, 'size:', msg.data?.length, 'session:', msg.sessionId);
         this.processUpload(uuid, msg.filename, msg.mimeType, msg.data, msg.sessionId, peer);
         break;
       }
@@ -379,7 +400,7 @@ class VdoBridge {
       case 'uploadChunk': {
         // Handle chunked upload
         const { uploadId, filename, mimeType, chunk, chunkIndex, totalChunks, sessionId } = msg;
-        console.log(`[VDO] Upload chunk ${chunkIndex + 1}/${totalChunks} for ${uploadId}`);
+        this.logDebug(`[VDO] Upload chunk ${chunkIndex + 1}/${totalChunks} for ${uploadId}`);
 
         if (!this.pendingUploads[uploadId]) {
           this.pendingUploads[uploadId] = {
@@ -399,7 +420,7 @@ class VdoBridge {
         if (pending.received === totalChunks) {
           // All chunks received, process the complete upload
           const fullData = pending.chunks.join('');
-          console.log('[VDO] All chunks received, processing upload:', filename, 'size:', fullData.length);
+          this.logDebug('[VDO] All chunks received, processing upload:', filename, 'size:', fullData.length);
           this.processUpload(pending.uuid, pending.filename, pending.mimeType, fullData, pending.sessionId, peer);
           delete this.pendingUploads[uploadId];
         }
