@@ -65,6 +65,8 @@
       font-size: 12px;
     }
     #terminal { flex: 1; background: #000; min-height: 0; }
+    #terminal.hscroll .xterm-viewport { overflow-x: auto; }
+    #terminal.hscroll .xterm-screen { width: max-content; }
     .hidden { display: none !important; }
     #keyboard-toolbar {
       display: flex;
@@ -196,6 +198,49 @@
     .new-session-row button:active {
       background: #3db892;
     }
+    .display-settings {
+      border-top: 1px solid #2a2a4e;
+      padding: 8px;
+    }
+    .display-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .display-row:last-child {
+      margin-bottom: 0;
+    }
+    .display-label {
+      width: 42px;
+      color: #a0a0a0;
+      flex-shrink: 0;
+    }
+    .display-row input[type="range"] {
+      flex: 1;
+    }
+    .display-row input[type="number"] {
+      width: 72px;
+      padding: 6px;
+      background: #1a1a2e;
+      border: 1px solid #3a3a5e;
+      border-radius: 4px;
+      color: #eaeaea;
+      font-size: 12px;
+    }
+    .display-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #a0a0a0;
+      font-size: 12px;
+    }
+    .display-value {
+      min-width: 24px;
+      text-align: right;
+      color: #a0a0a0;
+    }
   </style>
 </head>
 <body>
@@ -225,6 +270,21 @@
         <button id="new-session-btn">+ New</button>
       </div>
       <div id="sessions-list"></div>
+      <div class="display-settings">
+        <div class="display-row">
+          <span class="display-label">Font</span>
+          <input type="range" id="font-size" min="10" max="18" step="1" value="14">
+          <span id="font-size-value" class="display-value">14</span>
+        </div>
+        <div class="display-row">
+          <span class="display-label">Cols</span>
+          <input type="number" id="cols-input" min="40" max="240" step="1" placeholder="auto">
+          <label class="display-toggle"><input type="checkbox" id="fit-toggle" checked> Fit</label>
+        </div>
+        <div class="display-row">
+          <label class="display-toggle"><input type="checkbox" id="hscroll-toggle" checked> Horizontal scroll</label>
+        </div>
+      </div>
     </div>
     <div id="terminal"></div>
     <div id="keyboard-toolbar">
@@ -267,6 +327,10 @@
         this.sessionActivity = {}; // Track last activity per session
         this.sessionHasPty = {}; // Track PTY status per session
         this.activePeerUuid = null;
+        this.fontSize = 14;
+        this.autoFit = true;
+        this.manualCols = null;
+        this.hscrollEnabled = true;
 
         this.connectScreen = document.getElementById('connect-screen');
         this.terminalScreen = document.getElementById('terminal-screen');
@@ -279,6 +343,11 @@
         this.status = document.getElementById('status');
         this.sessionInfo = document.getElementById('session-info');
         this.terminalContainer = document.getElementById('terminal');
+        this.fontSizeInput = document.getElementById('font-size');
+        this.fontSizeValue = document.getElementById('font-size-value');
+        this.colsInput = document.getElementById('cols-input');
+        this.fitToggle = document.getElementById('fit-toggle');
+        this.hscrollToggle = document.getElementById('hscroll-toggle');
 
         // Check URL params or localStorage
         const params = new URLSearchParams(window.location.search);
@@ -287,8 +356,33 @@
         this.room = params.get('room') || 'steves-app';
         this.targetStreamId = params.get('stream') || 'server';
         this.salt = params.get('salt') || 'steves.app';
+        const paramFont = parseInt(params.get('font'), 10);
+        if (Number.isFinite(paramFont)) {
+          this.fontSize = Math.min(Math.max(paramFont, 10), 24);
+        }
+        const paramCols = parseInt(params.get('cols'), 10);
+        if (Number.isFinite(paramCols)) {
+          this.manualCols = Math.max(paramCols, 40);
+          this.autoFit = false;
+        }
+        if (params.get('fit') === '0') {
+          this.autoFit = false;
+        }
+        if (params.get('hscroll') === '0') {
+          this.hscrollEnabled = false;
+        }
         if (params.get('token')) this.passwordInput.value = params.get('token');
         else if (savedToken) this.passwordInput.value = savedToken;
+
+        this.fontSizeInput.value = this.fontSize;
+        this.fontSizeValue.textContent = this.fontSize;
+        if (this.manualCols) {
+          this.colsInput.value = this.manualCols;
+        }
+        this.fitToggle.checked = this.autoFit;
+        this.colsInput.disabled = this.autoFit;
+        this.hscrollToggle.checked = this.hscrollEnabled;
+        this.toggleHScroll(this.hscrollEnabled);
 
         document.getElementById('connect-form').addEventListener('submit', (e) => {
           e.preventDefault();
@@ -296,6 +390,34 @@
         });
         this.disconnectBtn.addEventListener('click', () => this.disconnect());
         this.sessionsBtn.addEventListener('click', () => this.toggleSessionsPanel());
+        this.fontSizeInput.addEventListener('input', () => {
+          const value = parseInt(this.fontSizeInput.value, 10);
+          if (Number.isFinite(value)) {
+            this.setFontSize(value);
+          }
+        });
+        this.colsInput.addEventListener('change', () => {
+          const value = parseInt(this.colsInput.value, 10);
+          if (Number.isFinite(value)) {
+            this.manualCols = Math.max(value, 40);
+            if (!this.autoFit) {
+              this.applyResize();
+            }
+          }
+        });
+        this.fitToggle.addEventListener('change', () => {
+          this.autoFit = this.fitToggle.checked;
+          this.colsInput.disabled = this.autoFit;
+          if (!this.autoFit && !this.manualCols && this.term) {
+            this.manualCols = this.term.cols;
+            this.colsInput.value = this.manualCols;
+          }
+          this.applyResize();
+        });
+        this.hscrollToggle.addEventListener('change', () => {
+          this.hscrollEnabled = this.hscrollToggle.checked;
+          this.toggleHScroll(this.hscrollEnabled);
+        });
 
         // New session button
         document.getElementById('new-session-btn').addEventListener('click', () => {
@@ -390,6 +512,8 @@
           // Request fresh buffer from host
           this.sendData({ type: 'attach', sessionId });
         }
+
+        this.sendResize();
       }
 
       async connect() {
@@ -589,7 +713,7 @@
 
         this.term = new Terminal({
           cursorBlink: true,
-          fontSize: 14,
+          fontSize: this.fontSize,
           fontFamily: 'monospace',
           allowProposedApi: true,
           theme: {
@@ -621,7 +745,11 @@
         this.fitAddon = new FitAddon.FitAddon();
         this.term.loadAddon(this.fitAddon);
         this.term.open(this.terminalContainer);
-        this.fitAddon.fit();
+        this.term.onResize(({ cols, rows }) => {
+          if (!this.currentSession) return;
+          this.sendData({ type: 'resize', cols, rows, sessionId: this.currentSession });
+        });
+        this.applyResize();
 
         this.term.onData((data) => {
           // Send to host with sessionId
@@ -716,7 +844,45 @@
         });
 
         this.term.focus();
-        window.addEventListener('resize', () => this.fitAddon.fit());
+        window.addEventListener('resize', () => this.applyResize());
+      }
+
+      setFontSize(size) {
+        const clamped = Math.min(Math.max(size, 10), 24);
+        this.fontSize = clamped;
+        this.fontSizeInput.value = clamped;
+        this.fontSizeValue.textContent = clamped;
+        if (this.term) {
+          this.term.options.fontSize = clamped;
+          this.applyResize();
+        }
+      }
+
+      applyResize() {
+        if (!this.term || !this.fitAddon) return;
+        if (this.autoFit || !this.manualCols) {
+          this.fitAddon.fit();
+        } else {
+          const dims = this.fitAddon.proposeDimensions();
+          const rows = dims ? dims.rows : this.term.rows;
+          this.term.resize(this.manualCols, rows);
+        }
+        this.sendResize();
+      }
+
+      sendResize() {
+        if (!this.term || !this.currentSession) return;
+        this.sendData({
+          type: 'resize',
+          cols: this.term.cols,
+          rows: this.term.rows,
+          sessionId: this.currentSession
+        });
+      }
+
+      toggleHScroll(enabled) {
+        if (!this.terminalContainer) return;
+        this.terminalContainer.classList.toggle('hscroll', enabled);
       }
 
       log(...args) {

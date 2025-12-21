@@ -407,6 +407,55 @@
       cursor: pointer;
     }
     #terminal { flex: 1; background: #000; padding: 4px; }
+    #terminal.hscroll .xterm-viewport { overflow-x: auto; }
+    #terminal.hscroll .xterm-screen { width: max-content; }
+    .display-settings {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #2a2a4e;
+    }
+    .display-title {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.04em;
+    }
+    .display-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.8rem;
+      color: #a0a0a0;
+    }
+    .display-row:last-child { margin-bottom: 0; }
+    .display-label {
+      width: 40px;
+      flex-shrink: 0;
+    }
+    .display-row input[type="range"] { flex: 1; }
+    .display-row input[type="number"] {
+      width: 72px;
+      padding: 6px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4e;
+      border-radius: 4px;
+      color: #eaeaea;
+      font-size: 0.8rem;
+    }
+    .display-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #a0a0a0;
+      font-size: 0.8rem;
+    }
+    .display-value {
+      min-width: 24px;
+      text-align: right;
+      color: #a0a0a0;
+    }
   </style>
 </head>
 <body>
@@ -553,6 +602,23 @@
             <button id="refresh-windows-btn">Scan Windows</button>
             <div id="windows-list" class="windows-list">
               <!-- Windows populated dynamically -->
+            </div>
+          </div>
+
+          <div class="display-settings">
+            <div class="display-title">Display</div>
+            <div class="display-row">
+              <span class="display-label">Font</span>
+              <input type="range" id="font-size" min="10" max="18" step="1" value="14">
+              <span id="font-size-value" class="display-value">14</span>
+            </div>
+            <div class="display-row">
+              <span class="display-label">Cols</span>
+              <input type="number" id="cols-input" min="40" max="240" step="1" placeholder="auto">
+              <label class="display-toggle"><input type="checkbox" id="fit-toggle" checked> Fit</label>
+            </div>
+            <div class="display-row">
+              <label class="display-toggle"><input type="checkbox" id="hscroll-toggle" checked> Horizontal scroll</label>
             </div>
           </div>
         </div>

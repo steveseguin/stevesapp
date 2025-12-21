@@ -39,8 +39,30 @@ class TerminalHub {
 
     const params = new URLSearchParams(window.location.search);
     this.debug = params.get('debug') === '1';
+    this.fontSize = parseInt(localStorage.getItem('steves-app-font-size'), 10);
+    if (!Number.isFinite(this.fontSize)) this.fontSize = 14;
+    const storedCols = parseInt(localStorage.getItem('steves-app-cols'), 10);
+    this.manualCols = Number.isFinite(storedCols) ? storedCols : null;
+    this.autoFit = localStorage.getItem('steves-app-fit') !== '0';
+    this.hscrollEnabled = localStorage.getItem('steves-app-hscroll') !== '0';
+    const paramFont = parseInt(params.get('font'), 10);
+    if (Number.isFinite(paramFont)) {
+      this.fontSize = Math.min(Math.max(paramFont, 10), 24);
+    }
+    const paramCols = parseInt(params.get('cols'), 10);
+    if (Number.isFinite(paramCols)) {
+      this.manualCols = Math.max(paramCols, 40);
+      this.autoFit = false;
+    }
+    if (params.get('fit') === '0') {
+      this.autoFit = false;
+    }
+    if (params.get('hscroll') === '0') {
+      this.hscrollEnabled = false;
+    }
 
     this.initElements();
+    this.initDisplaySettings();
     this.initEvents();
 
     // Auto-connect if token exists
@@ -72,10 +94,34 @@ class TerminalHub {
     this.terminalContainer = document.getElementById('terminal');
     this.sessionInfo = document.getElementById('session-info');
     this.disconnectBtn = document.getElementById('disconnect-btn');
+    this.fontSizeInput = document.getElementById('font-size');
+    this.fontSizeValue = document.getElementById('font-size-value');
+    this.colsInput = document.getElementById('cols-input');
+    this.fitToggle = document.getElementById('fit-toggle');
+    this.hscrollToggle = document.getElementById('hscroll-toggle');
 
     // P2P controls
     this.p2pToggle = document.getElementById('p2p-toggle');
     this.p2pStatus = document.getElementById('p2p-status');
+  }
+
+  initDisplaySettings() {
+    if (!this.fontSizeInput || !this.fontSizeValue) return;
+    this.fontSizeInput.value = this.fontSize;
+    this.fontSizeValue.textContent = this.fontSize;
+    if (this.colsInput) {
+      if (this.manualCols) {
+        this.colsInput.value = this.manualCols;
+      }
+      this.colsInput.disabled = this.autoFit;
+    }
+    if (this.fitToggle) {
+      this.fitToggle.checked = this.autoFit;
+    }
+    if (this.hscrollToggle) {
+      this.hscrollToggle.checked = this.hscrollEnabled;
+    }
+    this.toggleHScroll(this.hscrollEnabled);
   }
 
   initEvents() {
@@ -122,6 +168,52 @@ class TerminalHub {
 
     // Window resize
     window.addEventListener('resize', () => this.handleResize());
+
+    if (this.fontSizeInput) {
+      this.fontSizeInput.addEventListener('input', () => {
+        const value = parseInt(this.fontSizeInput.value, 10);
+        if (Number.isFinite(value)) {
+          this.setFontSize(value);
+          localStorage.setItem('steves-app-font-size', String(this.fontSize));
+        }
+      });
+    }
+    if (this.colsInput) {
+      this.colsInput.addEventListener('change', () => {
+        const value = parseInt(this.colsInput.value, 10);
+        if (Number.isFinite(value)) {
+          this.manualCols = Math.max(value, 40);
+          localStorage.setItem('steves-app-cols', String(this.manualCols));
+          if (!this.autoFit) {
+            this.applyResize();
+          }
+        }
+      });
+    }
+    if (this.fitToggle) {
+      this.fitToggle.addEventListener('change', () => {
+        this.autoFit = this.fitToggle.checked;
+        localStorage.setItem('steves-app-fit', this.autoFit ? '1' : '0');
+        if (this.colsInput) {
+          this.colsInput.disabled = this.autoFit;
+        }
+        if (!this.autoFit && !this.manualCols && this.term) {
+          this.manualCols = this.term.cols;
+          if (this.colsInput) {
+            this.colsInput.value = this.manualCols;
+          }
+          localStorage.setItem('steves-app-cols', String(this.manualCols));
+        }
+        this.applyResize();
+      });
+    }
+    if (this.hscrollToggle) {
+      this.hscrollToggle.addEventListener('change', () => {
+        this.hscrollEnabled = this.hscrollToggle.checked;
+        localStorage.setItem('steves-app-hscroll', this.hscrollEnabled ? '1' : '0');
+        this.toggleHScroll(this.hscrollEnabled);
+      });
+    }
 
     // Mobile: close sidebar on terminal click
     this.terminalContainer.addEventListener('click', () => {
@@ -348,7 +440,7 @@ class TerminalHub {
 
     this.term = new Terminal({
       cursorBlink: true,
-      fontSize: 14,
+      fontSize: this.fontSize,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       theme: {
         background: '#1a1a2e',
@@ -426,7 +518,7 @@ class TerminalHub {
     this.term.loadAddon(new WebLinksAddon.WebLinksAddon());
 
     this.term.open(this.terminalContainer);
-    this.fitAddon.fit();
+    this.applyResize();
 
     // Handle input; server echoes/edits for non-PTY sessions.
     this.term.onData((data) => {
@@ -492,17 +584,49 @@ class TerminalHub {
   }
 
   handleResize() {
-    if (this.fitAddon) {
-      this.fitAddon.fit();
+    this.applyResize();
+  }
 
-      if (this.currentSessionId && this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({
-          type: 'resize',
-          cols: this.term.cols,
-          rows: this.term.rows
-        }));
-      }
+  setFontSize(size) {
+    const clamped = Math.min(Math.max(size, 10), 24);
+    this.fontSize = clamped;
+    if (this.fontSizeInput) {
+      this.fontSizeInput.value = clamped;
     }
+    if (this.fontSizeValue) {
+      this.fontSizeValue.textContent = clamped;
+    }
+    if (this.term) {
+      this.term.options.fontSize = clamped;
+      this.applyResize();
+    }
+  }
+
+  applyResize() {
+    if (!this.term || !this.fitAddon) return;
+    if (this.autoFit || !this.manualCols) {
+      this.fitAddon.fit();
+    } else {
+      const dims = this.fitAddon.proposeDimensions();
+      const rows = dims ? dims.rows : this.term.rows;
+      this.term.resize(this.manualCols, rows);
+    }
+    this.sendResize();
+  }
+
+  sendResize() {
+    if (this.currentSessionId && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'resize',
+        cols: this.term.cols,
+        rows: this.term.rows
+      }));
+    }
+  }
+
+  toggleHScroll(enabled) {
+    if (!this.terminalContainer) return;
+    this.terminalContainer.classList.toggle('hscroll', enabled);
   }
 
   renderSessions() {
@@ -595,6 +719,7 @@ class TerminalHub {
       this.terminalBuffer = ''; // Clear buffer for new session
       this.userDetached = false;
       this.autoAttachEnabled = false;
+      this.applyResize();
 
       // Close sidebar on mobile, collapse on desktop
       if (window.innerWidth <= 768) {
