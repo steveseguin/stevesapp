@@ -1,202 +1,226 @@
 # Terminal Hub
 
-Remote terminal multiplexer for Windows. Access your terminal sessions from your phone via Tailscale.
+**Monitor your AI coding sessions from your phone. No VPN. No accounts. Just open a browser.**
+
+## The Problem
+
+You're running Claude Code, GPT Codex, or OpenCode on a VPS (or your home PC). You want to check on it from your phone while you're away. The current solution?
+
+1. Install Tailscale on your VPS
+2. Install Tailscale on your phone
+3. Set up a VPN connection
+4. Install a mobile SSH/terminal app
+5. Configure SSH keys or passwords
+6. Manage multiple tabbed connections
+
+It works, but it's a lot of setup for "I just want to see what Claude is doing."
+
+## The Solution
+
+Terminal Hub gives you browser-based terminal access with **zero configuration**:
+
+```bash
+npx terminal-hub
+# or: git clone ... && npm install && npm start
+```
+
+That's it. Open the URL on your phone, enter the token shown in the console, and you're connected.
+
+### Why Terminal Hub?
+
+| Feature | Tailscale + SSH App | Terminal Hub |
+|---------|-------------------|--------------|
+| VPN required | Yes | No |
+| Account required | Yes (Tailscale) | No |
+| Mobile app install | Yes | No (just browser) |
+| Works behind NAT/firewall | With Tailscale | Yes (P2P) |
+| Setup time | 15-30 min | 60 seconds |
+| Cost | Free tier limits | Free forever |
+| Open source | Partially | Fully (MIT) |
+| Customizable | Limited | Yes |
+
+### Perfect For
+
+- **Claude Code users** watching agentic coding in real-time
+- **Codex/OpenCode users** monitoring long-running tasks
+- **VPS users** who want quick mobile access without VPN overhead
+- **Anyone** who wants to check on builds, logs, or processes from their phone
 
 ## Features
 
-- **Native Sessions**: Spawn cmd, PowerShell, WSL, or SSH sessions through the hub
-- **Window Capture**: Attach to existing PuTTY/cmd/Windows Terminal windows
-- **Multiplexing**: Multiple clients can view and interact with the same session
-- **Mobile-friendly**: Responsive web UI works on phones and tablets
-- **Secure**: Bearer token authentication + Tailscale for encrypted access
+- **P2P Connection**: Direct encrypted WebRTC, no relay servers storing your data
+- **Mobile-Optimized UI**: Touch-friendly keyboard with Ctrl+C, arrows, Tab, etc.
+- **Image Upload**: Send screenshots from phone to terminal (for AI context)
+- **QR Code Login**: Scan from desktop to instantly connect your phone
+- **Multiple Sessions**: CMD, PowerShell, WSL, SSH - switch between them
+- **Multiplexing**: Multiple devices can view/control the same session
+- **Works on Windows**: Native support, no WSL required
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Option 1: npx (Easiest)
 
 ```bash
-cd terminal-hub
-npm install
+npx terminal-hub
 ```
 
-> **Note**: On Windows, `node-pty` requires build tools. Install them with:
-> ```bash
-> npm install -g windows-build-tools
-> ```
-> Or install Visual Studio Build Tools manually.
+### Option 2: Clone and Run
 
-### 2. Configure
+```bash
+git clone https://github.com/nicehash/terminal-hub
+cd terminal-hub
+npm install
+npm start
+```
+
+### Connect from Phone
+
+1. Note the token displayed in the console
+2. Open `http://YOUR_IP:3000/phone.html` on your phone
+3. Enter the token and tap Connect
+
+Or use the QR code: Open `http://localhost:3000` on your PC, enter the token, click the QR button, and scan with your phone.
+
+## Configuration
+
+Copy `.env.example` to `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set a secure API token:
+Available options:
 
 ```
-API_TOKEN=your-secure-random-token-here
-PORT=3000
+API_TOKEN=your-secure-random-token    # Required: access token
+PORT=3000                              # Server port
+DEFAULT_SHELL=cmd.exe                  # Default shell (cmd.exe, powershell.exe, wsl.exe)
+SCROLLBACK=10000                       # Terminal scrollback buffer size
 ```
 
-### 3. Run
+## P2P Mode (No Browser Required on Desktop)
+
+By default, Terminal Hub requires a browser open on your desktop to relay P2P connections. For headless/VPS use, install a WebRTC implementation:
 
 ```bash
-npm start
+npm install @anthropic-ai/wrtc   # or: npm install node-datachannel
 ```
 
-Or for development with auto-reload:
+Then the server acts as the P2P relay directly. Configure with:
 
-```bash
-npm run dev
+```
+VDO_ROOM=terminal-hub
+VDO_PASSWORD=your-token
+VDO_STREAM_ID=server
 ```
 
-### 4. Access
+## Security
 
-- **Local**: Open `http://localhost:3000` in your browser
-- **Remote**: Use your Tailscale IP (see below)
-- **VDO relay (no local browser required)**: Open `phone.html?token=YOUR_TOKEN&room=terminal-hub&stream=host` on mobile
+- **Token auth**: Simple but effective - use a strong random token
+- **E2E encrypted**: WebRTC provides encrypted P2P connections
+- **No accounts**: Nothing to hack, no password databases
+- **Local only by default**: Only accessible on your network unless you expose the port
+- **Open source**: Audit the code yourself
 
-## Remote Access via Tailscale
+For remote access without a VPN, you can:
+- Use Cloudflare Tunnel (free)
+- Port forward on your router (with strong token)
+- Deploy behind nginx with HTTPS
 
-1. Install [Tailscale](https://tailscale.com/download) on your Windows PC
-2. Sign in and note your Tailscale IP (e.g., `100.x.x.x`)
-3. Install Tailscale on your phone
-4. Access Terminal Hub at `http://100.x.x.x:3000` from your phone
+## How It Works
 
-## Usage
-
-### Creating Native Sessions
-
-1. Select a shell (cmd, PowerShell, WSL, or custom)
-2. Click "+ New" to create a session
-3. The terminal attaches automatically
-
-For SSH, select "Custom..." and enter: `ssh user@hostname`
-
-### Capturing Existing Windows
-
-1. Open PuTTY or cmd.exe on your PC
-2. Click "Scan Windows" in Terminal Hub
-3. Click on the window you want to capture
-4. Now you can view and control it from your phone
-
-### Multiplexing
-
-- Multiple browser tabs/phones can attach to the same session
-- All clients see the same output
-- Any client can type commands
-- Great for pair programming or monitoring
+```
+┌──────────────────────────────────────────────────────┐
+│                    Your Phone                         │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │  phone.html (mobile-optimized terminal UI)      │ │
+│  │  - Virtual keyboard with special keys           │ │
+│  │  - Image upload                                  │ │
+│  │  - Session switching                             │ │
+│  └─────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+                          │
+                          │ WebRTC P2P (encrypted)
+                          │ or WebSocket (local)
+                          ▼
+┌──────────────────────────────────────────────────────┐
+│                  Terminal Hub Server                  │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │  Session Manager                                 │ │
+│  │  - Spawns shells (cmd, powershell, wsl, ssh)   │ │
+│  │  - Manages terminal I/O                         │ │
+│  │  - Handles file uploads                         │ │
+│  └─────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────┐
+│  Claude Code / Codex / OpenCode / Any Terminal       │
+│  Running your AI coding assistant                     │
+└──────────────────────────────────────────────────────┘
+```
 
 ## API Reference
 
-All endpoints require `Authorization: Bearer <token>` header.
+For programmatic access:
 
-### Sessions
+### REST API
+
+All endpoints require `Authorization: Bearer <token>` header.
 
 ```
 GET  /api/sessions           - List all sessions
-POST /api/sessions           - Create native session
-     Body: { shell: "cmd.exe", cols: 120, rows: 30 }
+POST /api/sessions           - Create session { shell, cols, rows }
 DELETE /api/sessions/:id     - Destroy session
-```
-
-### Windows
-
-```
-GET  /api/windows            - List capturable windows
-POST /api/windows/:hwnd/attach - Attach to window
 ```
 
 ### WebSocket
 
 Connect to `ws://host:port?token=<token>`
 
-Messages:
-- `{ type: "attach", sessionId: "..." }` - Attach to session
-- `{ type: "input", data: "..." }` - Send input
-- `{ type: "resize", cols: N, rows: N }` - Resize terminal
-- `{ type: "detach" }` - Detach from session
+```javascript
+{ type: "attach", sessionId: "..." }   // Attach to session
+{ type: "input", data: "..." }         // Send input
+{ type: "resize", cols: N, rows: N }   // Resize terminal
+{ type: "detach" }                     // Detach from session
+```
 
 ## Troubleshooting
 
-### node-pty build errors
+### "node-pty not found" warning
 
-Install Windows build tools:
+This is normal. Without node-pty, Terminal Hub falls back to a basic mode that works fine for most use cases. To enable full PTY support:
+
 ```bash
-npm install -g windows-build-tools
+npm install -g windows-build-tools  # Run as admin
+npm install node-pty
 ```
-
-Or install Visual Studio with "Desktop development with C++" workload.
-
-### ffi-napi errors
-
-Ensure you have:
-- Node.js 18+ (LTS recommended)
-- Python 3.x (for node-gyp)
-- Windows Build Tools
-
-### Window capture not working
-
-- Make sure PuTTY or cmd is running before scanning
-- Try running Terminal Hub as administrator
-- Check that PowerShell is available (for UI Automation)
 
 ### Can't connect from phone
 
-- Ensure both devices are on Tailscale
+- Make sure your phone is on the same network (or use P2P mode)
 - Check Windows Firewall allows port 3000
-- Verify Tailscale IP with `tailscale ip -4`
+- Try accessing from phone browser: `http://YOUR_PC_IP:3000/phone.html`
 
-## Server-side VDO Relay (no local browser required)
+### Session disconnects frequently
 
-The server can host the VDO.Ninja data channel directly, so remote clients connect
-without keeping a local browser open.
+This usually means the P2P connection is unstable. Try:
+- Ensuring both devices have good internet
+- Using WebSocket mode (same network) instead of P2P
 
-### Requirements
+## Contributing
 
-- Node.js 18.20+ for `node-datachannel`
-- Node.js 20+ recommended for `@roamhq/wrtc`
+PRs welcome! This is a community project. Ideas for improvements:
 
-### Install a WebRTC implementation (data channels)
-
-Pick one:
-
-```bash
-npm install @roamhq/wrtc
-```
-
-or
-
-```bash
-npm install node-datachannel
-```
-
-### Configuration
-
-Environment variables:
-
-```
-VDO_SERVER=true
-VDO_ROOM=terminal-hub
-VDO_PASSWORD=your-secure-random-token-here
-VDO_STREAM_ID=host
-VDO_DEBUG=false
-```
-
-Notes:
-- `VDO_PASSWORD` defaults to `API_TOKEN` when not set.
-- `VDO_STREAM_ID` should match `phone.html?stream=host` (default is `host`).
-- Set `VDO_SERVER=false` to disable the relay.
-- Avoid enabling the browser P2P relay when the server relay is active to prevent stream ID conflicts.
-- `VDON_ROOM`, `VDON_PASSWORD`, and `VDON_STREAM_ID` are also accepted.
-
-## Security Notes
-
-- Use a strong, random API token (32+ characters)
-- Tailscale provides encrypted, authenticated connections
-- Sessions are ephemeral (cleared on server restart)
-- Don't expose port 3000 directly to the internet
+- Linux/Mac support
+- More shell integrations
+- Terminal themes
+- Session recording/playback
 
 ## License
 
-MIT
+MIT - Use it however you want. No attribution required.
+
+---
+
+Built for the AI coding assistant era. Monitor Claude Code from anywhere.
