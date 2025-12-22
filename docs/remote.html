@@ -404,6 +404,7 @@
           this.hscrollEnabled = false;
         }
         const tokenParam = params.get('token');
+        const autoConnect = params.get('autoconnect') !== '0';
         if (tokenParam) {
           this.passwordInput.value = tokenParam;
           localStorage.setItem('steves-app-token', tokenParam);
@@ -470,7 +471,7 @@
         });
 
         // Auto-connect if token provided via URL
-        if (tokenParam) {
+        if (tokenParam || (savedToken && autoConnect)) {
           this.connect();
         }
 

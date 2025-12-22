@@ -107,9 +107,6 @@ class TerminalHub {
     this.p2pToggle = document.getElementById('p2p-toggle');
     this.p2pStatus = document.getElementById('p2p-status');
 
-    if (this.tokenInput && !this.isMobile) {
-      this.tokenInput.focus();
-    }
   }
 
   registerServiceWorker() {

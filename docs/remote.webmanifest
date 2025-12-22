@@ -1,7 +1,7 @@
 {
   "name": "Steve's Remote",
   "short_name": "Remote",
-  "start_url": "/remote.html",
+  "start_url": "/remote.html?autoconnect=1",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#1a1a2e",
