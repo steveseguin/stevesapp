@@ -275,7 +275,7 @@ class TerminalHub {
       this.initTerminal();
       this.requestP2PStatus();
       if (this.currentSessionId && !this.userDetached) {
-        this.attachSession(this.currentSessionId);
+        this.attachSession(this.currentSessionId, true);
       }
     };
 
@@ -733,9 +733,9 @@ class TerminalHub {
     }, 5000);
   }
 
-  attachSession(sessionId) {
+  attachSession(sessionId, force = false) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      if (sessionId === this.currentSessionId && !this.pendingAttachSessionId) {
+      if (!force && sessionId === this.currentSessionId && !this.pendingAttachSessionId) {
         return;
       }
       this.pendingAttachSessionId = sessionId;
