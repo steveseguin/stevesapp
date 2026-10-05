@@ -783,6 +783,80 @@
         }
       }
 
+      initTerminalEvents() {
+        if (this.terminalEventsBound) return;
+        this.terminalEventsBound = true;
+
+        // Keyboard toolbar buttons
+        document.querySelectorAll('#keyboard-toolbar button[data-key]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const key = btn.dataset.key;
+            if (key) {
+              // Parse escape sequences
+              const data = key.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
+                String.fromCharCode(parseInt(hex, 16))
+              );
+              this.sendData({ type: 'input', data, sessionId: this.currentSession });
+            }
+            this.term.focus();
+          });
+        });
+
+        // Copy button
+        document.getElementById('copy-btn').addEventListener('click', async (e) => {
+          e.preventDefault();
+          await this.copyToClipboard();
+          this.term.focus();
+        });
+
+        // Paste button
+        document.getElementById('paste-btn').addEventListener('click', async (e) => {
+          e.preventDefault();
+          await this.pasteFromClipboard();
+          this.term.focus();
+        });
+
+        // Upload button
+        document.getElementById('upload-btn').addEventListener('click', (e) => {
+          e.preventDefault();
+          document.getElementById('file-input').click();
+        });
+
+        // File input change
+        document.getElementById('file-input').addEventListener('change', async (e) => {
+          this.log('File input changed:', e.target.files);
+          const file = e.target.files[0];
+          if (file) {
+            this.log('Starting upload for:', file.name, file.type, file.size);
+            await this.uploadFile(file);
+            e.target.value = ''; // Reset for next upload
+          }
+        });
+
+        // Document-level paste handler
+        document.addEventListener('paste', (e) => {
+          if (!this.term) return;
+          e.preventDefault();
+          const text = e.clipboardData?.getData('text');
+          if (text && this.currentSession) {
+            this.sendData({ type: 'input', data: text, sessionId: this.currentSession, paste: true });
+          }
+        });
+
+        // Document-level copy handler
+        document.addEventListener('copy', (e) => {
+          if (!this.term) return;
+          const selection = this.term.getSelection();
+          if (selection) {
+            e.preventDefault();
+            e.clipboardData?.setData('text/plain', selection);
+          }
+        });
+
+        window.addEventListener('resize', () => this.applyResize());
+      }
+
       showTerminal() {
         this.connectScreen.style.display = 'none';
         this.terminalScreen.style.display = 'flex';
@@ -832,52 +906,7 @@
           this.sendData({ type: 'input', data, sessionId: this.currentSession });
         });
 
-        // Keyboard toolbar buttons
-        document.querySelectorAll('#keyboard-toolbar button[data-key]').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const key = btn.dataset.key;
-            if (key) {
-              // Parse escape sequences
-              const data = key.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
-                String.fromCharCode(parseInt(hex, 16))
-              );
-              this.sendData({ type: 'input', data, sessionId: this.currentSession });
-            }
-            this.term.focus();
-          });
-        });
-
-        // Copy button
-        document.getElementById('copy-btn').addEventListener('click', async (e) => {
-          e.preventDefault();
-          await this.copyToClipboard();
-          this.term.focus();
-        });
-
-        // Paste button
-        document.getElementById('paste-btn').addEventListener('click', async (e) => {
-          e.preventDefault();
-          await this.pasteFromClipboard();
-          this.term.focus();
-        });
-
-        // Upload button
-        document.getElementById('upload-btn').addEventListener('click', (e) => {
-          e.preventDefault();
-          document.getElementById('file-input').click();
-        });
-
-        // File input change
-        document.getElementById('file-input').addEventListener('change', async (e) => {
-          this.log('File input changed:', e.target.files);
-          const file = e.target.files[0];
-          if (file) {
-            this.log('Starting upload for:', file.name, file.type, file.size);
-            await this.uploadFile(file);
-            e.target.value = ''; // Reset for next upload
-          }
-        });
+        this.initTerminalEvents();
 
         // Handle Ctrl+C copy / Ctrl+V paste
         this.term.attachCustomKeyEventHandler((e) => {
@@ -899,28 +928,7 @@
           return true;
         });
 
-        // Document-level paste handler
-        document.addEventListener('paste', (e) => {
-          if (!this.term) return;
-          e.preventDefault();
-          const text = e.clipboardData?.getData('text');
-          if (text && this.currentSession) {
-            this.sendData({ type: 'input', data: text, sessionId: this.currentSession, paste: true });
-          }
-        });
-
-        // Document-level copy handler
-        document.addEventListener('copy', (e) => {
-          if (!this.term) return;
-          const selection = this.term.getSelection();
-          if (selection) {
-            e.preventDefault();
-            e.clipboardData?.setData('text/plain', selection);
-          }
-        });
-
         this.term.focus();
-        window.addEventListener('resize', () => this.applyResize());
       }
 
       setFontSize(size) {
